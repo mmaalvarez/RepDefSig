@@ -5,7 +5,7 @@
 process load_feature_maps {
 
     time = 1.hour
-    memory = { (20 + 2*(task.attempt-1)).GB }
+    memory = { (params.memory_process1 + 2*(task.attempt-1)).GB }
 
     input:
     path 'dnarep_marks' from params.dnarep_marks
@@ -29,7 +29,7 @@ process load_feature_maps {
 process load_sample_somatic_muts_overlap_feature_maps_run_regressions {
 
     time = { params.time.hour }
-    memory = { (params.memory + 2*(task.attempt-1)).GB }
+    memory = { (params.memory_process2 + 2*(task.attempt-1)).GB }
 
     input:
     // these are read directly in the R script -- it's the output from the previous process
