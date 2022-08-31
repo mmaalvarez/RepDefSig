@@ -5,7 +5,7 @@
 process load_feature_maps {
 
     time = 1.hour
-    memory = { (4 + 2*(task.attempt-1)).GB }
+    memory = { (20 + 2*(task.attempt-1)).GB }
 
     input:
     path 'dnarep_marks' from params.dnarep_marks
