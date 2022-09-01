@@ -1,7 +1,7 @@
 #!/usr/bin/env nextflow
 
 
-// this loads DNA repair marks and chromatin features that are in input_lists/
+// this loads genomic coordinates of the DNA repair marks and chromatin features that are specified in input_lists/
 process load_feature_maps {
 
     time = 1.hour
@@ -28,20 +28,20 @@ process load_feature_maps {
 // process in parallel each sample specified in input_lists/sample_ids.tsv
 process load_sample_somatic_muts_overlap_feature_maps_run_regressions {
 
-    time = { params.time.hour }
+    time = { params.time_process2.hour }
     memory = { (params.memory_process2 + 2*(task.attempt-1)).GB }
 
     input:
-    // these are read directly in the R script -- it's the output from the previous process
-    path 'ln_bpsum_chromatin_env_table.tsv' from ln_bpsum_chromatin_env_table
-    path 'map_features.tsv' from map_features
-
     // these are specified in the command parameters
     val 'sample' from params.sample_ids.split()
     path 'somatic_data' from params.somatic_data
     path 'metadata' from params.metadata
     path 'dnarep_marks' from params.dnarep_marks
     path 'chromatin_features' from params.chromatin_features 
+
+    // these are read directly in the R script -- it's the output from the previous process
+    path 'ln_bpsum_chromatin_env_table.tsv' from ln_bpsum_chromatin_env_table
+    path 'map_features.tsv' from map_features
 
     output:
     file 'results_sample.tsv' into results
