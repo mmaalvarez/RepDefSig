@@ -2,10 +2,11 @@
 
 
 // this loads genomic coordinates of the DNA repair marks and chromatin features that are specified in input_lists/
+
 process load_feature_maps {
 
     time = 1.hour
-    memory = { (params.memory_process1 + 2*(task.attempt-1)).GB }
+    memory = { (params.memory_process1 + 5*(task.attempt-1)).GB }
 
     input:
     path 'dnarep_marks' from params.dnarep_marks
@@ -24,20 +25,26 @@ process load_feature_maps {
     """
 }
 
-/*
+
 // process in parallel each sample specified in input_lists/sample_ids.tsv
+
+Channel
+    .fromPath(params.sample_ids)
+    .splitCsv(header:false)
+    .set{ sample_name }
+
 process load_sample_somatic_muts_overlap_feature_maps_run_regressions {
 
-    time = { params.time_process2.hour }
-    memory = { (params.memory_process2 + 2*(task.attempt-1)).GB }
+    time = 1.hour
+    memory = { (params.memory_process2 + 5*(task.attempt-1)).GB }
 
     input:
     // these are specified in the command parameters
-    val 'sample' from params.sample_ids.split()
-    path 'somatic_data' from params.somatic_data
-    path 'metadata' from params.metadata
-    path 'dnarep_marks' from params.dnarep_marks
-    path 'chromatin_features' from params.chromatin_features 
+    val sample from sample_name
+    val somatic_data from params.somatic_data
+    path metadata from params.metadata
+    path dnarep_marks from params.dnarep_marks
+    path chromatin_features from params.chromatin_features 
 
     // these are read directly in the R script -- it's the output from the previous process
     path 'ln_bpsum_chromatin_env_table.tsv' from ln_bpsum_chromatin_env_table
@@ -55,8 +62,9 @@ process load_sample_somatic_muts_overlap_feature_maps_run_regressions {
     """
 }
 
+
 // combine regression results of all samples
+
 results
     .collectFile(name: 'res/results.tsv', keepHeader: true)
     .println { "Finished! Combined results for all samples saved in res/results.tsv" }
-*/

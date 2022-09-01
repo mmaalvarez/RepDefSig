@@ -23,7 +23,7 @@ args = commandArgs(trailingOnly=TRUE)
 
 sample = ifelse(interactive(),
                 yes = "CPCT02010350T",
-                no = args[1])
+                no = gsub("\\[|\\]", "", args[1])) # after channeling in nextflow the sample names are contained within brackets, so remove them
 
 path_somatic_variation = ifelse(interactive(),
                                 yes = "/g/strcombio/fsupek_cancer3/malvarez/WGS_tumors/somatic_variation/TCGA_PCAWG_Hartwig_CPTAC_POG_MMRFCOMMPASS/data/muts_pass_",

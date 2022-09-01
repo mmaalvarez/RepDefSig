@@ -99,11 +99,11 @@ if (length(chromatin_features_list_files) >=2) {
     colnames(merged_temp) = gsub("_dfright", "", colnames(merged_temp))
     
     dfleft = merged_temp
-    rm(merged_temp)
+    rm(merged_temp) ; rm(dfright)
     gc()
   }
 }
-gc()
+rm(chromatin_features_list_files) ; gc()
 
 # use dfleft to get n bases per environment (i.e. exposure)
 ln_bpsum_chromatin_env_table = dfleft %>%
@@ -118,8 +118,6 @@ write_tsv(ln_bpsum_chromatin_env_table, "ln_bpsum_chromatin_env_table.tsv")
 
 # now merge also the dna repair ones
 
-dfleft_with_dnarep = dfleft
-
 n_chromatin_features = length(unlist(list_feature_names))
 
 for (feature_i in seq(1, length(dnarep_marks_list_files))){
@@ -128,32 +126,34 @@ for (feature_i in seq(1, length(dnarep_marks_list_files))){
   
   list_feature_names[[n_chromatin_features + feature_i]] = colnames(elementMetadata(dnarep_marks_list_files[[feature_i]]))
   
-  merged_temp = bed_intersect(dfleft_with_dnarep, dfright, suffix = c("_dfleft_with_dnarep",
+  merged_temp = bed_intersect(dfleft, dfright, suffix = c("_dfleft",
                                                                       "_dfright")) %>%
-    mutate(start = ifelse(start_dfleft_with_dnarep >= start_dfright,
-                          start_dfleft_with_dnarep,
+    mutate(start = ifelse(start_dfleft >= start_dfright,
+                          start_dfleft,
                           start_dfright),
-           end = ifelse(end_dfleft_with_dnarep <= end_dfright,
-                        end_dfleft_with_dnarep,
+           end = ifelse(end_dfleft <= end_dfright,
+                        end_dfleft,
                         end_dfright),
            strand = "*",
            width = end - start + 1) %>%
     select(chrom, start, end, width, strand, contains(unlist(list_feature_names)))
-  colnames(merged_temp) = gsub("_dfleft_with_dnarep", "", colnames(merged_temp))
+  colnames(merged_temp) = gsub("_dfleft", "", colnames(merged_temp))
   colnames(merged_temp) = gsub("_dfright", "", colnames(merged_temp))
   
-  dfleft_with_dnarep = merged_temp
-  rm(merged_temp)
+  dfleft = merged_temp
+  rm(merged_temp) ; rm(dfright)
   gc()
 }
-chr_names = paste0("chr", c(seq(1,22), "X", "Y"))
-dfleft_with_dnarep$chrom = factor(dfleft_with_dnarep$chrom, ordered = T, levels = chr_names)
 
-map_features = dfleft_with_dnarep %>%
+rm(dnarep_marks_list_files) ; gc()
+
+chr_names = paste0("chr", c(seq(1,22), "X", "Y"))
+dfleft$chrom = factor(dfleft$chrom, ordered = T, levels = chr_names)
+
+map_features = dfleft %>%
   rename("seqnames" = "chrom") %>%
   arrange(seqnames, start)
 
-rm(dfleft) ; rm(dfleft_with_dnarep) ; rm(dfright) ; rm(features_list)
-gc()
+rm(dfleft) ; gc()
 
 write_tsv(map_features, "map_features.tsv")
