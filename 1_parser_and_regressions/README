@@ -5,6 +5,9 @@
 - sample_ids.tsv is from 
 	/g/strcombio/fsupek_cancer3/malvarez/WGS_tumors/somatic_variation/TCGA_PCAWG_Hartwig_CPTAC_POG_MMRFCOMMPASS/metadata/comb_metadata_final_6datasets__noconsent_samples_removed__hartwig_upd.tsv
 	
+	- split of samples by n of SNVs (which increases memory usage a lot) in 
+		/g/strcombio/fsupek_cancer3/malvarez/WGS_tumors/somatic_variation/TCGA_PCAWG_Hartwig_CPTAC_POG_MMRFCOMMPASS/metadata/bin_samples_by_nrows/
+		
 	
 - chromatin maps from
 
