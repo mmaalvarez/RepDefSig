@@ -78,13 +78,13 @@ merged = bed_intersect(dfleft, dfright, suffix = c("_dfleft",
   group_by(mut_id_dfright) %>%
   summarise(total_overlaps_length = sum(`.overlap`), across()) %>%
   mutate_at(vars(!contains("mut_id_dfright") & !contains("total_overlaps_length") & !contains("tri_dfright") & !contains(".overlap")),
-            funs(. * `.overlap` / total_overlaps_length)) %>%
+            ~. * `.overlap` / total_overlaps_length) %>%
   group_by(mut_id_dfright, tri_dfright) %>%
   summarise_at(vars(!contains("mut_id_dfright") & !contains("total_overlaps_length") & !contains("tri_dfright") & !contains(".overlap")),
-               funs(sum(.))) %>%
+               ~sum(.)) %>%
   # round the reptime bins to 0 decimal
   mutate_at(vars(contains(chromatin_features$name)),
-            funs(round(., 0)))
+            ~round(., 0))
 colnames(merged) = gsub("_dfleft", "", colnames(merged))
 colnames(merged) = gsub("_dfright", "", colnames(merged))
 
@@ -109,7 +109,7 @@ sommut_tricount_dnarep_chromatin = table(merged$chromatin_env,
   # average dna repair abundances per chromatin_env×trinuc pair that has >=2 mutations
   group_by(tri, chromatin_env, mutcount) %>%
   summarise_at(vars(!contains("tri") & !contains("chromatin_env") & !contains("mutcount") & !contains("mut_id")),
-               funs(mean(.))) %>% 
+               ~mean(.)) %>% 
   ungroup
 # parse
 sommut_tricount_dnarep_chromatin$chromatin_env = factor(sommut_tricount_dnarep_chromatin$chromatin_env, ordered = T)
