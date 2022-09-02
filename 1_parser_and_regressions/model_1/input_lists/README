@@ -3,3 +3,5 @@ chromatin feature: replication time
 dna repair: OGG1, BPDE (2 reps), XRCC4, BRCA2 (2 reps)
 
 samples: 75% (of ~9K) with less SNVs (<17K) -- from /g/strcombio/fsupek_cancer3/malvarez/WGS_tumors/somatic_variation/TCGA_PCAWG_Hartwig_CPTAC_POG_MMRFCOMMPASS/metadata/bin_samples_by_nrows/samples_nSNVs_75percent_lowest.tsv
+
+	4732f0c1-c2ab-5cdf-b5be-67e1d95dee84 regression failed --> too few mutations (20), so the response is constant
