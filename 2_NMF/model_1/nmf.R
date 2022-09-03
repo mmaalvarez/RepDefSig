@@ -26,21 +26,79 @@ results_regressions_negmatrix = results_regressions %>%
 # merge them into the NMF input
 coefficient_matrix = merge(results_regressions_posmatrix,
                            results_regressions_negmatrix,
-                           by = "sample_id") %>%
+                           by = "sample_id",
+                           suffixes = c("_poscoeff", "_negcoeff")) %>%
   # transpose
   t() %>% 
   `colnames<-`(.[1, ]) %>% 
   .[-1, ] %>%
-  as_tibble %>% 
+  as_tibble(rownames = NA) %>% 
+  rownames_to_column("dna_repair_mark") %>% 
+  mutate(dna_repair_mark = gsub("estimate_", "", dna_repair_mark)) %>% 
+  column_to_rownames("dna_repair_mark") %>% 
   mutate_all(as.numeric) %>%
   as.matrix
 
-rm(results_regressions) ; rm(results_regressions_posmatrix) ; rm(results_regressions_negmatrix) ; gc()
 
+### NMF
 
-## run NMF
+# in biorxiv.org/content/10.1101/2021.09.01.458620v1.full.pdf the optimal number of signatures is 35
+n_signatures = 10
+  
 nmf_res = nmf(coefficient_matrix,
-              k = 35, # in the package paper (biorxiv.org/content/10.1101/2021.09.01.458620v1.full.pdf) this is the optimal number of signatures
+              k = n_signatures, 
               seed = 1)
-# nmf_res$h --> Signature exposures in samples
-# nmf_res$w --> DNA repair mark weights in signatures
+
+# Signature exposures in samples
+metadata = read_tsv("/g/strcombio/fsupek_cancer3/malvarez/WGS_tumors/somatic_variation/TCGA_PCAWG_Hartwig_CPTAC_POG_MMRFCOMMPASS/metadata/comb_metadata_final_6datasets__noconsent_samples_removed__hartwig_upd.tsv") %>% 
+  select(sample_id, source, tissue, OriginalType, hr_status, MSI_status, smoking_history, treatment_platinum, treatment_5FU, tumorPurity, gender) %>% 
+  rename("Sample" = "sample_id")
+exposures = nmf_res$h %>% 
+  as_tibble(rownames = NA) %>% 
+  rownames_to_column("Signature") %>%
+  pivot_longer(cols = !contains("Signature"), names_to = "Sample", values_to = "Exposure") %>% 
+  left_join(metadata)
+
+# DNA repair mark weights in signatures
+weights = nmf_res$w %>% 
+  as_tibble(rownames = NA) %>%
+  rownames_to_column("dna_repair_mark") %>%
+  pivot_longer(cols = contains("nmf"), names_to = "signature", values_to = "weight") %>% 
+  extract(dna_repair_mark, into = c("dna_repair_mark", "submatrix"), "(.*)_([^_]+$)") %>% 
+  mutate(dna_repair_mark = factor(dna_repair_mark, levels = unique(gsub("_...coeff", "", rownames(nmf_res$w)))),
+         signature = factor(signature, levels = unique(exposures$Signature))) %>% 
+  arrange(dna_repair_mark, signature) %>% 
+  group_by(dna_repair_mark, signature) %>% 
+  ## combine (sum) 2 nmf submatrices (q based on pos coefficients submatrix, and another on the absolute neg coefficients submatrix)
+  summarise(weight_sum = sum(weight)) %>% 
+  ungroup %>% 
+  rename("DNA repair activity" = "dna_repair_mark", 
+         "Weight" = "weight_sum",
+         "Signature" = "signature") %>% 
+  relocate(Signature)
+
+
+### plotting
+
+## exposures
+ggplot(exposures,
+       aes()) +
+  
+## weights
+jet.colors = colorRampPalette(c("#00007F", "blue", "#007FFF", "cyan", "#7FFF7F", "yellow", "#FF7F00", "red", "#7F0000"))
+weights_plot = ggplot(weights, 
+       aes(x = Signature,
+           y = Weight,
+           fill = `DNA repair activity`)) +
+  geom_col() +
+  scale_fill_manual(values = jet.colors(length(levels(weights$`DNA repair activity`)))) +
+  theme_classic() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1),
+        text = element_text(size = 20))
+ggsave("weights.pdf",
+       plot = weights_plot,
+       device = "pdf",
+       width = 10.5,
+       height = 5.6,
+       dpi = 600,
+       bg = "white")
