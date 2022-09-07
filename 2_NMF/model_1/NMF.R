@@ -201,20 +201,22 @@ sigClusterScores = optimizeClustersPar(nmfHmatAllByFact, maxNumClusters = maxK)
 
 ## Visualize the clustering quality scores in heatmaps (facetted by the 'smooth' parameter)
 heatmap_clustering = sigClusterScores[k <= maxK] %>% melt(id.vars = c("nFact", "k"),
-                                                          measure.vars = "avgClScore" # "minClScore" or  "avgClScore" or "secondWorstClScore"
-) %>%
+                                                          measure.vars = "avgClScore") %>%  # "minClScore" or  "avgClScore" or "secondWorstClScore"
   ggplot(aes(nFact, k)) +
   geom_tile(aes(fill = value)) +
   geom_text(aes(label = round(value, 2))) +
+  theme_classic() +
+  theme(text = element_text(size = 20)) +
   scale_fill_gradient2(low = "red", mid = "white", high = "blue", midpoint = 0.4)
-ggsave("NMF_heatmap_clustering.pdf",
+ggsave("NMF_heatmap_clustering.jpg",
        plot = heatmap_clustering,
-       device = "pdf",
+       device = "jpg",
        width = 12.5,
        height = 6,
        dpi = 600)
 
-## FOR 6 features:
+
+## UPDATE THIS -- for 6 features:
 optimal_k = 6
 
 
@@ -361,10 +363,9 @@ combined_plots = cowplot::plot_grid(NULL,
                                     weights_plot,
                                     nrow = 4,
                                     rel_heights = c(0.02, 1,-0.05,1))
-ggsave("NMF_plot.pdf",
+ggsave("NMF_exposures_weights_plot.jpg",
        plot = combined_plots,
-       device = "pdf",
+       device = "jpg",
        width = 22.5,
        height = 12,
-       dpi = 600,
-       bg = "white")
+       dpi = 600)
