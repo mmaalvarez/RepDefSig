@@ -35,21 +35,21 @@ metadata_sample = ifelse(interactive(),
   read_tsv %>% filter(sample_id == sample)
 
 dnarep_marks = ifelse(interactive(),
-                      yes = "/g/strcombio/fsupek_data/users/malvarez/projects/RepDefSig/1_parser_and_regressions/model_0_test/input_lists/dnarep_marks.tsv",
+                      yes = "../input_lists/dnarep_marks.tsv",
                       no = args[4]) %>%
   read_tsv(comment = "#")
 
 chromatin_features = ifelse(interactive(),
-                            yes = "/g/strcombio/fsupek_data/users/malvarez/projects/RepDefSig/1_parser_and_regressions/model_0_test/input_lists/chromatin_features.tsv",
+                            yes = "../input_lists/chromatin_features.tsv",
                             no = args[5]) %>%
   read_tsv(comment = "#")
 
 
 # load results from previous process
 
-ln_bpsum_chromatin_env_table = read_tsv("ln_bpsum_chromatin_env_table.tsv")
+ln_bpsum_chromatin_env_table = read_tsv("ln_bpsum_chromatin_env_table.tsv") #/g/strcombio/fsupek_data/users/malvarez/projects/RepDefSig/1_parser_and_regressions/model_1/work/00/0e19a3a0539837c18d273382cf22bf/ln_bpsum_chromatin_env_table.tsv")
 
-map_features = as_tibble(fread("map_features.tsv"))
+map_features = as_tibble(fread("map_features.tsv")) #/g/strcombio/fsupek_data/users/malvarez/projects/RepDefSig/1_parser_and_regressions/model_1/work/00/0e19a3a0539837c18d273382cf22bf/map_features.tsv"))
 gc()
 
 
