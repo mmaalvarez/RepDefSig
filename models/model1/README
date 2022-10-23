@@ -1,0 +1,5 @@
+1st build singularity container (need sudo)
+
+2nd do parser and regressions
+
+3rd do NMF and plotting

@@ -1,0 +1,51 @@
+
+- each model (combination of chromatin features, DNA repair markers, etc) has a separate folder
+
+
+- sample_ids.tsv is from 
+	/g/strcombio/fsupek_cancer3/malvarez/WGS_tumors/somatic_variation/TCGA_PCAWG_Hartwig_CPTAC_POG_MMRFCOMMPASS/metadata/comb_metadata_final_6datasets__noconsent_samples_removed__hartwig_upd.tsv
+	
+	- split of samples by n of SNVs (which increases memory usage a lot) in 
+		/g/strcombio/fsupek_cancer3/malvarez/WGS_tumors/somatic_variation/TCGA_PCAWG_Hartwig_CPTAC_POG_MMRFCOMMPASS/metadata/bin_samples_by_nrows/
+		
+	
+- chromatin maps from
+
+ /g/strcombio/fsupek_cancer3/malvarez/chromatin_info/
+													histone_methylation_and_DHS/
+													DNA_methylation/
+													replication_time/
+													rna_seq/
+													copy_number/
+	- NOTE: probably will just use Replication time
+
+			name in chromatin_features.tsv has to match the column name of the feature abundance in its chipseq file, e.g. 'RepliSeq', no 'RepliSeq_6bins'
+
+
+- bound protein abundance maps from
+													bound_protein_abundance/
+																			208_proteins_ENCODE/	(CTCF, BRCA1)
+																			CTCFmotif_and_cohesin/
+																			laminb1/
+
+	- example chromatin feature paths
+	
+		name	path
+		DNase_pooled8_merged_2bins	/g/strcombio/fsupek_cancer3/malvarez/chromatin_info/histone_methylation_and_DHS/roadmap/fran_legacy_parsed/inputBeds_pooled8_merged_2bins/DNase_pooled8_merged_2bins.bed
+		H3K36me3_pooled8_merged_2bins	/g/strcombio/fsupek_cancer3/malvarez/chromatin_info/histone_methylation_and_DHS/roadmap/fran_legacy_parsed/inputBeds_pooled8_merged_2bins/H3K36me3_pooled8_merged_2bins.bed
+		H3K9me3_pooled8_merged_2bins	/g/strcombio/fsupek_cancer3/malvarez/chromatin_info/histone_methylation_and_DHS/roadmap/fran_legacy_parsed/inputBeds_pooled8_merged_2bins/H3K9me3_pooled8_merged_2bins.bed
+		RnaSeq-txnStrandCorrected_pooled8_merged_2bins	/g/strcombio/fsupek_cancer3/malvarez/chromatin_info/rna_seq/bins_histone_marks_rnaseq_pooled_fran/fran_legacy_parsed/RnaSeq-txnStrandCorrected_pooled8_merged_2bins.bed
+		RepliSeq	/g/strcombio/fsupek_cancer3/malvarez/chromatin_info/replication_time/fran_pooled_bins_replication_time/fran_legacy_parsed/RepliSeq_pooled8_merged_6bins.bed
+		RepliSeq_2bins	/g/strcombio/fsupek_cancer3/malvarez/chromatin_info/replication_time/fran_pooled_bins_replication_time/fran_legacy_parsed/RepliSeq_pooled8_merged_2bins.bed
+		CtcfCohesin_pooled8_merged_2bins	/g/strcombio/fsupek_cancer3/malvarez/chromatin_info/bound_protein_abundance/CTCFmotif_and_cohesin/fran_legacy_parsed/inputBeds_pooled8_merged_2bins/CtcfCohesin_pooled8_merged_2bins.bed
+
+
+- DNA repair activity marks from
+																			DNA_repair/
+																						BER/
+																						NER/	Here the 2 reps BPDE_tXRseq_rep[1,2]_2strands have conflicting strands, I'm just setting them to '*'
+																						MMR/
+																						DSB/
+
+
+results.tsv is the metadata file merged with the reg coefficients and pvalues from the regression of each sample
