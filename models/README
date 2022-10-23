@@ -1,4 +1,14 @@
 
+- pipeline: 
+
+	1st build singularity container (need sudo)
+
+	2nd do parser and regressions
+
+	3rd do NMF and plotting
+
+
+
 - each model (combination of chromatin features, DNA repair markers, etc) has a separate folder
 
 
