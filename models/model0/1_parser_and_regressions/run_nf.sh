@@ -9,7 +9,7 @@ nextflow -log $PWD/log/nextflow.log run pipe.nf --dnarep_marks $PWD/input_lists/
 												--sample_ids $PWD/input_lists/sample_ids.tsv \
 												--somatic_data /g/strcombio/fsupek_cancer3/malvarez/WGS_tumors/somatic_variation/TCGA_PCAWG_Hartwig_CPTAC_POG_MMRFCOMMPASS/data/muts_pass_ \
 												--metadata /g/strcombio/fsupek_cancer3/malvarez/WGS_tumors/somatic_variation/TCGA_PCAWG_Hartwig_CPTAC_POG_MMRFCOMMPASS/metadata/comb_metadata_final_6datasets__noconsent_samples_removed__hartwig_upd.tsv \
-												--memory_process1 2 \
-												--memory_process2 2 \
+												--memory_process1 35 \
+												--memory_process2 14 \
 												-with-tower \
 												-resume #-bg

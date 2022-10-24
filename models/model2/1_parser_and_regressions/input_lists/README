@@ -2,12 +2,4 @@ chromatin feature: replication time
 
 dna repair: OGG1 (many -pseudo-reps), BPDE (2 reps), XRCC4, BRCA2 (2 reps)
 
-samples: keep those with up to 100K SNVs, downsample those with more -- from /g/strcombio/fsupek_cancer3/malvarez/WGS_tumors/somatic_variation/TCGA_PCAWG_Hartwig_CPTAC_POG_MMRFCOMMPASS/metadata/bin_samples_by_nrows/
-
-
-
-DON'T KNOW IF THIS APPLIES (it's from model_1):
-
-		4732f0c1-c2ab-5cdf-b5be-67e1d95dee84 regression failed --> too few mutations (20), so the response is constant
-
-	WARNING: actually the nf included an extra ~150 samples that do not have metadata info, this input list is updated and does not include them (and includes some extra samples with >~16K & <~17K SNVs)
+samples: use Nik zainal cell line

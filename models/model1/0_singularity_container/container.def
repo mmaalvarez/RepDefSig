@@ -14,7 +14,7 @@ Stage: build
 
     ## install basics for CentOS 7
 
-    yum -y update ; yum -y install wget java-11-openjdk-devel which dnf libcurl-devel openssl-devel libxml2-devel
+    yum -y update ; yum -y install wget java-11-openjdk-devel which dnf libcurl-devel openssl-devel libxml2-devel cmake3
 
 
     ## install nextflow
@@ -69,7 +69,9 @@ Stage: build
     R --slave -e 'install.packages("RcppML", repos="https://cran.rstudio.com/")'
     # install older valr version 0.6.3 from source, as newer versions were raising errors during the installation
     wget https://cran.r-project.org/src/contrib/Archive/valr/valr_0.6.3.tar.gz
-    R --slave -e 'install.packages("valr_0.6.3.tar.gz", repos=NULL, type="source")'
+    R --slave -e 'install.packages("valr_0.6.3.tar.gz", repos="https://cran.rstudio.com/")'
+    R --slave -e 'install.packages("MASS", repos="https://cran.rstudio.com/")'
+    R --slave -e 'install.packages("lme4", repos="https://cran.rstudio.com/")'
 
 
 %test
