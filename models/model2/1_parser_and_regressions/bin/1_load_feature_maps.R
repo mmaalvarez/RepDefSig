@@ -18,12 +18,12 @@ conflict_prefer("reduce", "IRanges")
 args = commandArgs(trailingOnly=TRUE)
 
 dnarep_marks = ifelse(interactive(),
-                      yes = "/g/strcombio/fsupek_data/users/malvarez/projects/RepDefSig/1_parser_and_regressions/model_0_test/input_lists/dnarep_marks.tsv",
+                      yes = "../input_lists/dnarep_marks.tsv",
                       no = args[1]) %>%
   read_tsv(comment = "#") 
 
 chromatin_features = ifelse(interactive(),
-                            yes = "/g/strcombio/fsupek_data/users/malvarez/projects/RepDefSig/1_parser_and_regressions/model_0_test/input_lists/chromatin_features.tsv",
+                            yes = "../input_lists/chromatin_features.tsv",
                             no = args[2]) %>%
   read_tsv(comment = "#") 
 

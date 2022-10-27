@@ -7,8 +7,8 @@ mkdir -p log/
 nextflow -log $PWD/log/nextflow.log run pipe.nf --dnarep_marks $PWD/input_lists/dnarep_marks.tsv \
 												--chromatin_features $PWD/input_lists/chromatin_features.tsv \
 												--sample_ids $PWD/input_lists/sample_ids.tsv \
-												--somatic_data /g/strcombio/fsupek_cancer3/malvarez/WGS_tumors/somatic_variation/NIKZAINALCELLLINE \
-												--metadata /g/strcombio/fsupek_cancer3/malvarez/WGS_tumors/somatic_variation/NIKZAINALCELLLINE \
+												--somatic_data /g/strcombio/fsupek_cancer3/malvarez/WGS_tumors/somatic_variation/cell_lines/kucab_2019/processed/denovo_subclone_subs_final.tsv \
+												--metadata /g/strcombio/fsupek_cancer3/malvarez/WGS_tumors/somatic_variation/cell_lines/kucab_2019/processed/sample_treatments.tsv \
 												--memory_process1 10 \
 												--memory_process2 5 \
 												-with-tower \

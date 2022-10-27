@@ -22,15 +22,15 @@ conflict_prefer("reduce", "IRanges")
 args = commandArgs(trailingOnly=TRUE)
 
 sample = ifelse(interactive(),
-                yes = "CPCT02010350T",
+                yes = "MSM0.1",
                 no = gsub("\\[|\\]", "", args[1])) # after channeling in nextflow the sample names are contained within brackets, so remove them
 
 path_somatic_variation = ifelse(interactive(),
-                                yes = "/g/strcombio/fsupek_cancer3/malvarez/WGS_tumors/somatic_variation/TCGA_PCAWG_Hartwig_CPTAC_POG_MMRFCOMMPASS/data/muts_pass_",
+                                yes = "/g/strcombio/fsupek_cancer3/malvarez/WGS_tumors/somatic_variation/cell_lines/kucab_2019/processed/data/muts_pass_",
                                 no = args[2])
 
 metadata_sample = ifelse(interactive(),
-                         yes = "/g/strcombio/fsupek_cancer3/malvarez/WGS_tumors/somatic_variation/TCGA_PCAWG_Hartwig_CPTAC_POG_MMRFCOMMPASS/metadata/comb_metadata_final_6datasets__noconsent_samples_removed__hartwig_upd.tsv",
+                         yes = "/g/strcombio/fsupek_cancer3/malvarez/WGS_tumors/somatic_variation/cell_lines/kucab_2019/processed/sample_treatments.tsv",
                          no = args[3]) %>%
   read_tsv %>% filter(sample_id == sample)
 
@@ -47,15 +47,15 @@ chromatin_features = ifelse(interactive(),
 
 # load results from previous process
 
-ln_bpsum_chromatin_env_table = read_tsv("ln_bpsum_chromatin_env_table.tsv") #/g/strcombio/fsupek_data/users/malvarez/projects/RepDefSig/1_parser_and_regressions/model_1/work/00/0e19a3a0539837c18d273382cf22bf/ln_bpsum_chromatin_env_table.tsv")
+ln_bpsum_chromatin_env_table = read_tsv("ln_bpsum_chromatin_env_table.tsv") # example_output/ln_bpsum_chromatin_env_table.tsv")
 
-map_features = as_tibble(fread("map_features.tsv")) #/g/strcombio/fsupek_data/users/malvarez/projects/RepDefSig/1_parser_and_regressions/model_1/work/00/0e19a3a0539837c18d273382cf22bf/map_features.tsv"))
+map_features = as_tibble(fread("map_features.tsv")) # example_output/map_features.tsv"))
 gc()
 
 
 ## load sample
 somatic_mutations_granges = read_csv(paste0(path_somatic_variation, sample, ".csv")) %>%
-  select(-c(sample_id, ref, alt, alteration, context)) %>%
+  select(chr, start, end, tri) %>% 
   # add +-50Kb buffer around each SNV (i.e. 1/10Mb windows), to ensure most of them overlap with at least 1 reptime genomic range
   mutate(start = start - 50000,
          end = end + 50000) %>%
@@ -154,7 +154,7 @@ y = tryCatch(glmer.nb(formula = formula,
 
 ## append features' coefficients and pvalues to metadata_sample
 results_sample = full_join(metadata_sample, y) %>%
-  relocate(source) %>% relocate(sample_id_2) %>% relocate(sample_id)
+  relocate(sample_id)
 
 write_tsv(results_sample, "results_sample.tsv")
 gc()

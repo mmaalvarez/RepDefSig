@@ -1,9 +1,9 @@
 name	path
-OGG1_chipseq	/g/strcombio/fsupek_cancer3/malvarez/chromatin_info/bound_protein_abundance/DNA_repair/BER/OGG1/chipseq/GSM2357433_CP-Sample_Flag-OGG1-Con-2.bed	#						BER/OGG1/control			chipseq	.bed
-all other OGG1
-...
+OGG1_control_chipseq	/g/strcombio/fsupek_cancer3/malvarez/chromatin_info/bound_protein_abundance/DNA_repair/BER/OGG1/chipseq/GSM2357433_CP-Sample_Flag-OGG1-Con-2.tdf.bed	#			BER/OGG1/control			chipseq	.bed
+OGG1_GOx15_chipseq	/g/strcombio/fsupek_cancer3/malvarez/chromatin_info/bound_protein_abundance/DNA_repair/BER/OGG1/chipseq/GSM2357434_CP-Sample_Flag-OGG1-GOX-15-1.tdf.bed	#				BER/OGG1/GOx15				chipseq	.bed
+OGG1_GOx30_chipseq	/g/strcombio/fsupek_cancer3/malvarez/chromatin_info/bound_protein_abundance/DNA_repair/BER/OGG1/chipseq/GSM2357435_CP-Sample_Flag-OGG1-GOX-30-1.tdf.bed	#				BER/OGG1/GOx30				chipseq	.bed
+OGG1_GOx60_chipseq	/g/strcombio/fsupek_cancer3/malvarez/chromatin_info/bound_protein_abundance/DNA_repair/BER/OGG1/chipseq/GSM2357436_CP-Sample_Flag-OGG1-GOX-60-1.tdf.bed	#				BER/OGG1/GOx60				chipseq	.bed
 BPDE_tXRseq_rep1_2strands	/g/strcombio/fsupek_cancer3/malvarez/chromatin_info/bound_protein_abundance/DNA_repair/NER/tobacco_smoking/GSM2575211_GM1HB2sorted_scaled_both_strands.bed	#	NER/tobacco_smoking/rep1	tXR-seq	.bed
 BPDE_tXRseq_rep2_2strands	/g/strcombio/fsupek_cancer3/malvarez/chromatin_info/bound_protein_abundance/DNA_repair/NER/tobacco_smoking/GSM2575212_GM1HB3sorted_scaled_both_strands.bed	#	NER/tobacco_smoking/rep2	tXR-seq	.bed
 XRCC4	/g/strcombio/fsupek_cancer3/malvarez/chromatin_info/bound_protein_abundance/DNA_repair/DSBR/XRCC4_RAD51_53BP1/XRCC4_hg19_normalized.bw	#											DSBR/XRCC4					chipseq	.bw
-BRCA2_rep1	/g/strcombio/fsupek_cancer3/malvarez/chromatin_info/bound_protein_abundance/DNA_repair/DSBR/BRCA2/GSM3908736_BRCA2_1.bw	#														DSBR/BRCA2/rep1				chipseq	.bw
-BRCA2_rep2	/g/strcombio/fsupek_cancer3/malvarez/chromatin_info/bound_protein_abundance/DNA_repair/DSBR/BRCA2/GSM3908737_BRCA2_2.bw	#														DSBR/BRCA2/rep1				chipseq	.bw
+BRCA2	/g/strcombio/fsupek_cancer3/malvarez/chromatin_info/bound_protein_abundance/DNA_repair/DSBR/BRCA2/GSE133450_BRCA2.anno.bed	#														DSBR/BRCA2					chipseq	.bed
