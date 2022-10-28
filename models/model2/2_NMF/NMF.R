@@ -24,16 +24,17 @@ conflict_prefer("nmf", "NMF")
 
 ##### parse input
 
-metadata = read_tsv("/g/strcombio/fsupek_cancer3/malvarez/WGS_tumors/somatic_variation/TCGA_PCAWG_Hartwig_CPTAC_POG_MMRFCOMMPASS/metadata/comb_metadata_final_6datasets__noconsent_samples_removed__hartwig_upd.tsv") %>% 
-  select(sample_id, source, tissue, OriginalType, hr_status, MSI_status, smoking_history, treatment_platinum, treatment_5FU, tumorPurity, gender) %>% 
-  rename("Sample" = "sample_id")
+metadata = read_tsv("/g/strcombio/fsupek_cancer3/malvarez/WGS_tumors/somatic_variation/cell_lines/kucab_2019/processed/sample_treatments.tsv") %>% 
+  rename("Sample" = "sample_id") %>% 
+  mutate(treatment_type = gsub("DNA damage response inhibitors",
+                               "DNA damage resp. inh.",
+                               treatment_type))
 
 # load results of regressions and just keep sample_id and coefficients for DNA repair marks
-results_regressions = read_tsv("../../1_parser_and_regressions/model_1/res/results.tsv") %>%
+results_regressions = read_tsv("../1_parser_and_regressions/res/results.tsv") %>%
   # make sure all samples are in the metadata table
   filter(sample_id %in% metadata$Sample) %>% 
-  select(sample_id, contains("estimate_")) %>%  #  source, MSI_status, hr_status, smoking_history, treatment_platinum, treatment_5FU, tissue, OriginalType, 
-  arrange(sample_id)
+  select(sample_id, contains("estimate_"))
 
 # a) keep positive coefficients, and convert negative to zero 
 results_regressions_posmatrix = results_regressions %>% 
@@ -74,7 +75,6 @@ coefficient_matrix_Resamp = list()
 
 
 ## Generate matrices with small random perturbations of the original matrix 
-coefficient_matrix_Resamp = list()
 for (nIter in 1:totalNumIters) {
   cat(sprintf("Generating bootstrap matrix: nIter %d\n", nIter))
   coefficient_matrix_TempIter = matrix(data = NA,
@@ -216,8 +216,8 @@ ggsave("NMF_heatmap_clustering.jpg",
        dpi = 600)
 
 
-## UPDATE THIS -- for 6 features:
-optimal_k = 6
+## UPDATE THIS -- for 8 features:
+optimal_k = 8
 
 
 
@@ -251,24 +251,27 @@ exposures = nmf_res$h %>%
   as_tibble(rownames = NA) %>% 
   rownames_to_column("Signature") %>%
   pivot_longer(cols = !contains("Signature"), names_to = "Sample", values_to = "Exposure") %>% 
-  # add info on MSI, HR, smoking, and treatments
+  # add metadata info (e.g. treatments, MSI, HR, smoking...)
   left_join(metadata) %>% 
-  mutate(Signature = factor(Signature, levels = unique(rownames(data.frame(nmf_res$h)))),
-         MSI_parsed = ifelse(MSI_status %in% c("HYPER", "MSI", "ERCC2mut"), "MSI", NA),
-         hr_parsed = ifelse(hr_status %in% c("HR_deficient"), "HRdef", NA),
-         smoking_history_parsed = ifelse(smoking_history %in% c("Current", "Former"), "Smoker", NA),
-         treatment_platinum_parsed = ifelse(treatment_platinum == "TRUE", "Platinum", NA),
-         treatment_5FU_parsed = ifelse(treatment_5FU == "TRUE", "5FU", NA)) %>%
-  unite(col = "Metadata", MSI_parsed, hr_parsed, smoking_history_parsed,treatment_platinum_parsed, treatment_5FU_parsed, na.rm = T, sep = " & ") %>% 
-  mutate(Metadata = gsub("^$", "NOTA/NA", Metadata)) %>% 
-  rename("Database" = "source") %>% 
+  mutate(Signature = factor(Signature, levels = unique(rownames(data.frame(nmf_res$h))))
+         #MSI_parsed = ifelse(MSI_status %in% c("HYPER", "MSI", "ERCC2mut"), "MSI", NA),
+         #hr_parsed = ifelse(hr_status %in% c("HR_deficient"), "HRdef", NA),
+         #smoking_history_parsed = ifelse(smoking_history %in% c("Current", "Former"), "Smoker", NA),
+         #treatment_platinum_parsed = ifelse(treatment_platinum == "TRUE", "Platinum", NA),
+         #treatment_5FU_parsed = ifelse(treatment_5FU == "TRUE", "5FU", NA)
+         ) %>%
+  #unite(col = "Metadata", MSI_parsed, hr_parsed, smoking_history_parsed,treatment_platinum_parsed, treatment_5FU_parsed, na.rm = T, sep = " & ") %>% 
+  #mutate(Metadata = gsub("^$", "NOTA/NA", Metadata)) %>% 
+  #rename("Database" = "source") %>% 
   # highlight top hits for each signature
   group_by(Signature) %>% 
-  mutate(is.hit = ifelse(Exposure==max(Exposure), "hit", NA),
-         has.Metadata = ifelse(Metadata != "NOTA/NA", "yes", "no"))
-# "NOTA/NA" to the end
-exposures$Metadata = factor(exposures$Metadata, levels = c(unique(exposures$Metadata)[unique(exposures$Metadata) != "NOTA/NA"],
-                                                           "NOTA/NA"))
+  mutate(is.hit = ifelse(Exposure==max(Exposure), "hit", NA)
+         #has.Metadata = ifelse(Metadata != "NOTA/NA", "yes", "no")
+         ) %>% 
+  rename("Treatment\ntype" = "treatment_type")
+# # "NOTA/NA" to the end
+# exposures$Metadata = factor(exposures$Metadata, levels = c(unique(exposures$Metadata)[unique(exposures$Metadata) != "NOTA/NA"],
+#                                                            "NOTA/NA"))
 write_tsv(exposures,
           "NMF_exposures.tsv")
 
@@ -285,7 +288,7 @@ weights = nmf_res$w %>%
   ## keep larger of the 2 values for the 2 nmf submatrices (1 based on pos coefficients submatrix, and another on the absolute neg coefficients submatrix)
   summarise(Weight = max(weight)) %>% 
   ungroup %>% 
-  rename("DNA repair activity" = "dna_repair_mark", 
+  rename("DNA repair\nactivity" = "dna_repair_mark", 
          "Signature" = "signature") %>% 
   relocate(Signature)
 write_tsv(weights,
@@ -301,28 +304,32 @@ exposures_plot = ggplot(filter(exposures, Exposure > 0.001),
                         aes(x = Signature,
                             # convert exposures to %
                             y = Exposure*100,
-                            group = Database)) +
+                            group = `Treatment\ntype`)) + # Database
   scale_y_log10(labels = function(x) sub("0+$", "", x)) +
-  # all points, no colors
-  geom_point(aes(shape = Database),
-             position = position_dodge(width = 1),
-             alpha = 0.5,
+  # # all points, no colors
+  # geom_point(aes(shape = Database),
+  #            position = position_dodge(width = 1),
+  #            alpha = 0.5,
+  #            size = 4) +
+  # # colored those with metadata info
+  geom_point(aes(#shape = Database,
+                 fill = `Treatment\ntype`
+                 #alpha = has.Metadata
+                 ),
+             shape = 21,
+             position = position_dodge(width = 3),
              size = 4) +
-  # colored those with metadata info
-  geom_point(aes(shape = Database,
-                 fill = Metadata,
-                 alpha = has.Metadata),
-             position = position_dodge(width = 1),
-             size = 4) +
-  scale_shape_manual(values = c(21,23,24,22,20,25)) + #"\u2716"
-  scale_fill_manual(values = c(jet.colors(length(unique(filter(exposures, Exposure > 0.001 & Metadata!="NOTA/NA")$Metadata))), "white")) + # Metadata==NOTA/NA is assigned white
-  scale_alpha_manual(values = c(0, 0.8), guide = 'none') +
+  #scale_shape_manual(values = c(21,23,24,22,20,25)) + #"\u2716"
+  scale_fill_manual(values = jet.colors(length(unique(exposures$`Treatment\ntype`)))) +
+  #scale_fill_manual(values = c(jet.colors(length(unique(filter(exposures, Exposure > 0.001 & Metadata!="NOTA/NA")$Metadata))), "white")) + # Metadata==NOTA/NA is assigned white
+  #scale_alpha_manual(values = c(0, 0.8), guide = 'none') +
   guides(shape = guide_legend(override.aes = list(size=6)),
          fill = guide_legend(override.aes = list(size=6, shape=21))) +
   # label sample names to top hits
   ggrepel::geom_text_repel(data = filter(exposures, is.hit == "hit"),
                            aes(label = Sample),
-                           size = 3,
+                           size = 5,
+                           nudge_y = 5,
                            min.segment.length = 10000) +
   facet_wrap(facets = vars(Signature), scales = "free", nrow = 1) +
   theme_classic() +
@@ -335,19 +342,20 @@ exposures_plot = ggplot(filter(exposures, Exposure > 0.001),
         text = element_text(size = 20),
         strip.background = element_blank(),
         strip.text.x = element_blank(),
-        panel.spacing = unit(1, "mm"))
+        panel.spacing = unit(4, "mm"),
+        legend.text = element_text(size = 10))
 
 ## weights
 weights_plot = ggplot(weights %>%
-                        mutate(`DNA repair activity` = gsub("_2strands", "", `DNA repair activity`),
+                        mutate(`DNA repair\nactivity` = gsub("_2strands", "", `DNA repair\nactivity`),
                                Signature = factor(gsub("nmf", "", Signature), levels = seq(1:length(levels(weights$Signature))))), 
                       aes(x = Signature,
                           y = Weight)) +
   scale_y_continuous(expand = c(0, 0),
                      breaks = seq(0, 1, 0.25),
                      labels = function(x) sub("0+$", "", x)) +
-  geom_col(aes(fill = `DNA repair activity`)) +
-  scale_fill_manual(values = jet.colors(length(levels(weights$`DNA repair activity`)))) +
+  geom_col(aes(fill = `DNA repair\nactivity`)) +
+  scale_fill_manual(values = jet.colors(length(levels(weights$`DNA repair\nactivity`)))) +
   guides(fill = guide_legend(override.aes = list(size=6))) +
   facet_grid(cols = vars(Signature), scales = "free", space = "free") +
   theme_classic() +
@@ -355,7 +363,8 @@ weights_plot = ggplot(weights %>%
         text = element_text(size = 20),
         strip.background = element_blank(),
         strip.text.x = element_blank(),
-        panel.spacing = unit(1, "mm"))
+        panel.spacing = unit(2, "mm"),
+        legend.text = element_text(size = 9))
 
 combined_plots = cowplot::plot_grid(NULL,
                                     exposures_plot,
@@ -366,6 +375,6 @@ combined_plots = cowplot::plot_grid(NULL,
 ggsave("NMF_exposures_weights_plot.jpg",
        plot = combined_plots,
        device = "jpg",
-       width = 22.5,
+       width = 21.3,
        height = 12,
        dpi = 600)
