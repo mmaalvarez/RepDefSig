@@ -127,7 +127,7 @@ for (feature_i in seq(1, length(dnarep_marks_list_files))){
   list_feature_names[[n_chromatin_features + feature_i]] = colnames(elementMetadata(dnarep_marks_list_files[[feature_i]]))
   
   merged_temp = bed_intersect(dfleft, dfright, suffix = c("_dfleft",
-                                                                      "_dfright")) %>%
+                                                          "_dfright")) %>%
     mutate(start = ifelse(start_dfleft >= start_dfright,
                           start_dfleft,
                           start_dfright),
