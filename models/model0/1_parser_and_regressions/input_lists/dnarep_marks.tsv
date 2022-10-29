@@ -1,3 +1,0 @@
-name	path
-OGG1_chipseq	/g/strcombio/fsupek_cancer3/malvarez/chromatin_info/bound_protein_abundance/DNA_repair/BER/OGG1/chipseq/GSM2357433_CP-Sample_Flag-OGG1-Con-2.bed	#						BER/OGG1/control			chipseq	.bed
-BPDE_tXRseq_rep1_2strands	/g/strcombio/fsupek_cancer3/malvarez/chromatin_info/bound_protein_abundance/DNA_repair/NER/tobacco_smoking/GSM2575211_GM1HB2sorted_scaled_both_strands.bed	#	NER/tobacco_smoking/rep1	tXR-seq	.bed
