@@ -1,0 +1,11 @@
+dna repair: OGG1 (4 pseudo-reps), BPDE (2 reps), XRCC4, BRCA2 (using what I think is the fold enrich between BRCA and input)
+
+
+samples: Nik-Zainal iPSCs (induced pluripotential stem cells)
+
+	/g/strcombio/fsupek_cancer3/malvarez/WGS_tumors/somatic_variation/cell_lines/kucab_2019/
+
+
+chromatin feature: replication time pooled8
+
+	maybe better ENCODE's RepTime for the embryonic stem cell line BG02 (as iPSCs are de-differentiated cells that are therefore similar to embryonic stem cells)?
