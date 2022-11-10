@@ -233,11 +233,13 @@ nmfHmatAllByFact_combined_pos_negcoeff = nmfHmatAllByFact %>%
 sigClusterScores = optimizeClustersPar(nmfHmatAllByFact_combined_pos_negcoeff, maxNumClusters = maxK)
 
 ## Visualize the clustering quality scores in heatmaps (facetted by the 'smooth' parameter)
-heatmap_clustering = sigClusterScores[k <= maxK] %>% melt(id.vars = c("nFact", "k"),
-                                                          measure.vars = "avgClScore") %>%  # "minClScore" or  "avgClScore" or "secondWorstClScore"
+heatmap_clustering = sigClusterScores[k <= maxK] %>% 
+                      melt(id.vars = c("nFact", "k"),
+                           measure.vars = "avgClScore") %>%
+                      rename("stability" = "value") %>% 
   ggplot(aes(nFact, k)) +
-  geom_tile(aes(fill = value)) +
-  geom_text(aes(label = round(value, 2))) +
+  geom_tile(aes(fill = stability)) +
+  geom_text(aes(label = round(stability, 2))) +
   theme_classic() +
   theme(text = element_text(size = 20)) +
   scale_fill_gradient2(low = "red", mid = "white", high = "blue", midpoint = 0.4)
