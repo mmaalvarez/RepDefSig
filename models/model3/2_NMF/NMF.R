@@ -21,6 +21,8 @@ conflict_prefer("parLapplyLB", "parallel")
 conflict_prefer("nmf", "NMF")
 
 
+dir.create("plots")
+
 
 ##### parse input
 
@@ -239,7 +241,7 @@ heatmap_clustering = sigClusterScores[k <= maxK] %>% melt(id.vars = c("nFact", "
   theme_classic() +
   theme(text = element_text(size = 20)) +
   scale_fill_gradient2(low = "red", mid = "white", high = "blue", midpoint = 0.4)
-ggsave("NMF_heatmap_clustering.jpg",
+ggsave("plots/NMF_heatmap_clustering.jpg",
        plot = heatmap_clustering,
        device = "jpg",
        width = 12.5,
@@ -322,15 +324,18 @@ for(optimal_k in seq(2, maxK)){
   
   ### plotting
   
-  jet.colors = colorRampPalette(c("#00007F", "blue", "#007FFF", "cyan", "#7FFF7F", "yellow", "#FF7F00", "red", "#7F0000"))
+  #jet.colors = colorRampPalette(c("#00007F", "blue", "#007FFF", "cyan", "#7FFF7F", "yellow", "#FF7F00", "red", "#7F0000"))
+  jet.colors = colorRampPalette(c("gray", "red", "yellow", "green", "cyan", "blue", "magenta", "black"))
   
-  ## exposures (only Exposures > 0.001)
-  exposures_plot = ggplot(filter(exposures, Exposure > 0.001), 
+  exposure_limit = 0.035
+  
+  ## exposures (only Exposures > exposure_limit%)
+  exposures_plot = ggplot(filter(exposures, Exposure > exposure_limit), 
                           aes(x = Signature,
                               # convert exposures to %
                               y = Exposure*100,
                               group = `Treatment\ntype`)) + # Database
-    scale_y_log10(labels = function(x) sub("0+$", "", x)) +
+    scale_y_continuous(labels = function(x) sub("0+$", "", x)) +
     # # all points, no colors
     # geom_point(aes(shape = Database),
     #            position = position_dodge(width = 1),
@@ -342,7 +347,7 @@ for(optimal_k in seq(2, maxK)){
                    #alpha = has.Metadata
                    ),
                shape = 21,
-               position = position_dodge(width = 3),
+               position = position_dodge(width = 1),
                size = 4) +
     #scale_shape_manual(values = c(21,23,24,22,20,25)) + #"\u2716"
     scale_fill_manual(values = jet.colors(length(unique(exposures$`Treatment\ntype`)))) +
@@ -350,16 +355,19 @@ for(optimal_k in seq(2, maxK)){
     #scale_alpha_manual(values = c(0, 0.8), guide = 'none') +
     guides(shape = guide_legend(override.aes = list(size=6)),
            fill = guide_legend(override.aes = list(size=6, shape=21))) +
-    # label sample names to top hits
-    ggrepel::geom_text_repel(data = filter(exposures, is.hit == "hit"),
+    # label sample names
+    ggrepel::geom_text_repel(data = filter(exposures, Exposure > exposure_limit) %>%  #filter(is.hit == "hit") %>%
+                                    mutate(Sample = gsub("MSM0.", "samp_", Sample)),
                              aes(label = Sample),
-                             size = 5,
-                             nudge_y = 5,
+                             size = 4,
+                             #nudge_y = 5,
+                             force = 5,
+                             max.overlaps = 1000000,
                              min.segment.length = 10000) +
     facet_wrap(facets = vars(Signature), scales = "free", nrow = 1) +
     theme_classic() +
     xlab("") +
-    ylab("% Exposure (>0.1% ; log10 scale)") +
+    ylab(paste0("% Exposure (>", exposure_limit*100, "%)")) +
     theme(axis.text.x = element_blank(),
           axis.ticks.x = element_blank(),
           axis.line.x = element_blank(),
@@ -369,7 +377,7 @@ for(optimal_k in seq(2, maxK)){
           strip.text.x = element_blank(),
           panel.spacing = unit(4, "mm"),
           legend.text = element_text(size = 10))
-  
+
   ## weights
   weights_plot = ggplot(weights %>%
                           mutate(`DNA repair\nactivity` = gsub("_2strands", "", `DNA repair\nactivity`),
@@ -398,15 +406,16 @@ for(optimal_k in seq(2, maxK)){
           legend.text = element_text(size = 9))
   
   combined_plots = cowplot::plot_grid(NULL,
-                                      exposures_plot,
+                                      cowplot::plot_grid(exposures_plot, NULL, nrow = 1, rel_widths = c(1, 0.04*(optimal_k/11))),
                                       NULL,
                                       weights_plot,
                                       nrow = 4,
-                                      rel_heights = c(0.02, 1,-0.05,1))
-  ggsave(paste0("NMF_exposures_weights_plot_k", optimal_k, ".jpg"),
+                                      rel_heights = c(0.02, 0.75,-0.05,1))
+  ggsave(paste0("plots/NMF_exposures_weights_plot_k", optimal_k, ".jpg"),
          plot = combined_plots,
          device = "jpg",
          width = 21.3,
          height = 12,
-         dpi = 600)
+         dpi = 700,
+         bg = "white")
 }
