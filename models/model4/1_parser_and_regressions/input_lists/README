@@ -1,0 +1,28 @@
+all coordinates hg19
+
+dna repair: 
+			OGG1 (3 samples with increasing damage time)
+			BPDE (2 reps)
+			UV
+				XR-seq	NHF1, CSB, and XPC cell lines
+						CPD or 6-4PP damage
+						~2 reps each
+						at 1h
+				tXR-seq	GM12878 cell line
+						CPD damage
+						2 reps
+						at 4h
+			XRCC4
+			BRCA2 (using what I think is the fold enrich between BRCA and input)
+
+
+samples: Nik-Zainal iPSCs (induced pluripotential stem cells)
+
+		/g/strcombio/fsupek_cancer3/malvarez/WGS_tumors/somatic_variation/cell_lines/kucab_2019
+	
+		- Only including the controls, and the treated samples whose mutation burden is above the mean mut burden of the controls (done in kucab_2019/processed/list_treated_samples_mutburden_above_mean_of_controls.R)
+
+
+chromatin feature: replication time pooled8
+
+offset: log(N trinuc) of each RT bin and N(C/T)N combination (6 × 32 = 192)
