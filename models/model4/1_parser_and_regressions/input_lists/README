@@ -1,28 +1,62 @@
+
 all coordinates hg19
 
-dna repair: 
-			OGG1 (3 samples with increasing damage time)
-			BPDE (2 reps)
-			UV
-				XR-seq	NHF1, CSB, and XPC cell lines
-						CPD or 6-4PP damage
-						~2 reps each
-						at 1h
-				tXR-seq	GM12878 cell line
-						CPD damage
-						2 reps
-						at 4h
-			XRCC4
-			BRCA2 (using what I think is the fold enrich between BRCA and input)
 
+mutation samples: Nik-Zainal iPSCs (induced pluripotential stem cells)
 
-samples: Nik-Zainal iPSCs (induced pluripotential stem cells)
-
-		/g/strcombio/fsupek_cancer3/malvarez/WGS_tumors/somatic_variation/cell_lines/kucab_2019
+		- /g/strcombio/fsupek_cancer3/malvarez/WGS_tumors/somatic_variation/cell_lines/kucab_2019
 	
 		- Only including the controls, and the treated samples whose mutation burden is above the mean mut burden of the controls (done in kucab_2019/processed/list_treated_samples_mutburden_above_mean_of_controls.R)
 
 
+dna repair: 
+			OGG1 (3 samples with increasing damage time)
+			BPDE (2 reps)
+			UV	tech		cell lines		damage type		reps		time
+				------------------------------------------------------------
+				XR-seq		NHF1,CSB,XPC	CPD or 6-4PP	~2 each		1h
+				tXR-seq		GM12878			CPD				 2			4h
+			XRCC4 (I think this is not fold enrichment, but no input was available)
+			BRCA2 (using what I think is the fold enrich between BRCA and input)
+			MSH6 (control + H2O2 damage)
+			SETD2 (control + H2O2 damage)
+
+			- Excluded some features (marked) since their ranges cover a small part of the genome, so as not to lose ranges in the merged map and therefore not have to increase SNV windows width >100bp in order to not lose SNVs:
+				RepliSeq						3035 Mbp
+				OGG1_GOx15_chipseq				1873 Mbp	×
+				OGG1_GOx30_chipseq				2685 Mbp
+				OGG1_GOx60_chipseq				2268 Mbp
+				BPDE_tXRseq_rep1_2strands		 297 Mbp	×
+				BPDE_tXRseq_rep2_2strands		 450 Mbp	×
+				UV_XRseq_NHF1_CPD_1h			3095 Mbp
+				UV_XRseq_NHF1_CPD_1h_Rep1		3095 Mbp
+				UV_XRseq_NHF1_CPD_1h_Rep2		3095 Mbp
+				UV_XRseq_NHF1_PP64_1h_Rep1		3095 Mbp
+				UV_XRseq_NHF1_PP64_1h_Rep2		3095 Mbp
+				UV_XRseq_CSB_CPD_1h				3095 Mbp
+				UV_XRseq_CSB_PP64_1h_Rep1		3095 Mbp
+				UV_XRseq_CSB_PP64_1h_Rep2		3095 Mbp
+				UV_XRseq_XPC_CPD_1h				3095 Mbp
+				UV_XRseq_XPC_PP64_1h			3095 Mbp
+				UV_tXRseq_GM12878_CPD_4h_Rep1	 468 Mbp	×
+				UV_tXRseq_GM12878_CPD_4h_Rep2	 384 Mbp	×
+				XRCC4							3035 Mbp
+				BRCA2						       7 Mbp	×
+				MSH6_control					3094 Mbp
+				MSH6_H2O2						3094 Mbp
+				SETD2_control					3094 Mbp
+				SETD2_H2O2						3094 Mbp
+
+				- Excluded:
+					OGG1_GOx15_chipseq	/g/strcombio/fsupek_cancer3/malvarez/chromatin_info/DNA_repair__protein_binding/DNA_repair/BER/OGG1/chipseq/bed_hg19/hg19_GSM2357434_CP-Sample_Flag-OGG1-GOX-15-1.tdf.bed	#							BER/OGG1/GOx15				chip-seq	.bed
+					BPDE_tXRseq_rep1_2strands	/g/strcombio/fsupek_cancer3/malvarez/chromatin_info/DNA_repair__protein_binding/DNA_repair/NER/tobacco_smoking/tXR_seq/GSM2575211_GM1HB2sorted_scaled_both_strands.tsv	#						NER/tobacco_smoking/rep1	tXR-seq		.tsv
+					BPDE_tXRseq_rep2_2strands	/g/strcombio/fsupek_cancer3/malvarez/chromatin_info/DNA_repair__protein_binding/DNA_repair/NER/tobacco_smoking/tXR_seq/GSM2575212_GM1HB3sorted_scaled_both_strands.tsv	#						NER/tobacco_smoking/rep2	tXR-seq		.tsv
+					UV_tXRseq_GM12878_CPD_4h_Rep1	/g/strcombio/fsupek_cancer3/malvarez/chromatin_info/DNA_repair__protein_binding/DNA_repair/NER/UV/tXR_seq/merged_strands/GSM2575209_CPD4HE1sorted_scaled_merged_strands.bw	#				NER/UV/						tXR-seq		.bw
+					UV_tXRseq_GM12878_CPD_4h_Rep2	/g/strcombio/fsupek_cancer3/malvarez/chromatin_info/DNA_repair__protein_binding/DNA_repair/NER/UV/tXR_seq/merged_strands/GSM2575210_CPD4HE2sorted_scaled_merged_strands.bw	#				NER/UV/						tXR-seq		.bw
+					BRCA2	/g/strcombio/fsupek_cancer3/malvarez/chromatin_info/DNA_repair__protein_binding/DNA_repair/DSBR/HDR/BRCA2/GSE133450_BRCA2.anno.tsv	#																				DSBR/BRCA2					chip-seq	.tsv
+
+
 chromatin feature: replication time pooled8
+
 
 offset: log(N trinuc) of each RT bin and N(C/T)N combination (6 × 32 = 192)

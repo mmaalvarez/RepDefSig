@@ -34,9 +34,10 @@ for (feature in dnarep_marks$name){
   path_file = filter(dnarep_marks, name == feature)$path
   
   dnarep_marks_list_files[[feature]] = tryCatch(import.bw(path_file),
-                                                error = function(e) tryCatch(makeGRangesFromDataFrame(read_tsv(path_file),
-                                                                                                      keep.extra.columns = T),
-                                                                             error = function(e) import.bed(path_file)))
+                                                error = function(e) tryCatch(import.bedGraph(path_file),
+                                                                             error = function(e) tryCatch(makeGRangesFromDataFrame(read_tsv(path_file),
+                                                                                                                                   keep.extra.columns = T),
+                                                                                                          error = function(e) import.bed(path_file))))
   # add feature name as the metadata (score) colname
   colnames(elementMetadata(dnarep_marks_list_files[[feature]])) = feature
   gc()
@@ -47,12 +48,26 @@ for (feature in chromatin_features$name){
   
   path_file = filter(chromatin_features, name == feature)$path
   
-  chromatin_features_list_files[[feature]] = tryCatch(makeGRangesFromDataFrame(read_tsv(path_file),
-                                                                               keep.extra.columns = T),
-                                                      error = function(e) tryCatch(import.bed(path_file),
-                                                                                   error = function(e) import.bw(path_file)))
+  chromatin_features_list_files[[feature]] = tryCatch(import.bw(path_file),
+                                                      error = function(e) tryCatch(import.bedGraph(path_file),
+                                                                                   error = function(e) tryCatch(makeGRangesFromDataFrame(read_tsv(path_file),
+                                                                                                                                         keep.extra.columns = T),
+                                                                                                                error = function(e) import.bed(path_file))))
   gc()
 }
+
+
+## check total Mbp of all ranges per feature map, see which could be removed so as not to lose ranges in the map_features and therefore not having to increase SNV windows width >100bp in order to not lose SNVs..
+## NOTE: I therefore removed tXR-seq, OGG-15 and BRCA2 maps
+# dnarep_marks_list_files %>% 
+#   map(~reduce(.)) %>% 
+#   map(~width(.)) %>% 
+#   map(~paste0(sum(.)/1e6, " Mbp"))
+# 
+# chromatin_features_list_files %>% 
+#   map(~reduce(.)) %>% 
+#   map(~width(.)) %>% 
+#   map(~paste0(sum(.)/1e6, " Mbp"))
 
 
 # merge Reptime and dna repair coordinates

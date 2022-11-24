@@ -58,9 +58,14 @@ colnames(offset)[1] = "mb_domain"
 offset = select(offset,
                 c("mb_domain", "tri", offset_name))
 
-# load results from previous process
 
-map_features = as_tibble(fread("map_features.tsv")) # example_output/map_features.tsv"))
+# load map_features from previous process
+
+map_features = ifelse(interactive(),
+                      yes = "../work/0b/7a581d0a5f7bb7762b2b7fcf320cab/map_features.tsv",
+                      no = "map_features.tsv") %>% 
+  fread %>% as_tibble
+
 gc()
 
 
