@@ -42,6 +42,9 @@ process list_median_scores {
     """
 }
 
+// the same median_scores is passed to 2 diff processes
+median_scores.into{median_scores_for_next_process; median_scores_for_last_process}
+
 
 
 // in parallel per chromosome (no chrY, as RepliSeq does not have it), load genomic coordinates of the DNA repair marks and chromatin features that are specified in input_lists/
@@ -58,7 +61,7 @@ process load_feature_maps {
     path 'dnarep_marks' from params.dnarep_marks
     path 'chromatin_features' from params.chromatin_features
     val 'chromosome' from chromosomes
-    path median_scores_collected from median_scores.collect() // from previous process
+    path median_scores_collected from median_scores_for_next_process.collect() // from previous process
 
     output:
     file 'map_features_chr*.tsv' into map_features
@@ -146,7 +149,7 @@ process load_sample_somatic_muts_overlap_feature_maps_run_regressions {
     path dnarep_marks from params.dnarep_marks
     path chromatin_features from params.chromatin_features 
     path offset from offset_table // from previous process
-    path median_scores_collected from median_scores.collect() // from 1st process
+    path median_scores_collected from median_scores_for_last_process.collect() // from 1st process
     // res/map_features.tsv from 2nd process read directly in R 
 
     output:
