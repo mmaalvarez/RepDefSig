@@ -47,16 +47,24 @@ dna repair:
 				SETD2_control					3094 Mbp
 				SETD2_H2O2						3094 Mbp
 
-				- Excluded:
+				- Excluded for the above reason:
 					OGG1_GOx15_chipseq	/g/strcombio/fsupek_cancer3/malvarez/chromatin_info/DNA_repair__protein_binding/DNA_repair/BER/OGG1/chipseq/bed_hg19/hg19_GSM2357434_CP-Sample_Flag-OGG1-GOX-15-1.tdf.bed	#							BER/OGG1/GOx15				chip-seq	.bed
 					BPDE_tXRseq_rep1_2strands	/g/strcombio/fsupek_cancer3/malvarez/chromatin_info/DNA_repair__protein_binding/DNA_repair/NER/tobacco_smoking/tXR_seq/GSM2575211_GM1HB2sorted_scaled_both_strands.tsv	#						NER/tobacco_smoking/rep1	tXR-seq		.tsv
 					BPDE_tXRseq_rep2_2strands	/g/strcombio/fsupek_cancer3/malvarez/chromatin_info/DNA_repair__protein_binding/DNA_repair/NER/tobacco_smoking/tXR_seq/GSM2575212_GM1HB3sorted_scaled_both_strands.tsv	#						NER/tobacco_smoking/rep2	tXR-seq		.tsv
 					UV_tXRseq_GM12878_CPD_4h_Rep1	/g/strcombio/fsupek_cancer3/malvarez/chromatin_info/DNA_repair__protein_binding/DNA_repair/NER/UV/tXR_seq/merged_strands/GSM2575209_CPD4HE1sorted_scaled_merged_strands.bw	#				NER/UV/						tXR-seq		.bw
 					UV_tXRseq_GM12878_CPD_4h_Rep2	/g/strcombio/fsupek_cancer3/malvarez/chromatin_info/DNA_repair__protein_binding/DNA_repair/NER/UV/tXR_seq/merged_strands/GSM2575210_CPD4HE2sorted_scaled_merged_strands.bw	#				NER/UV/						tXR-seq		.bw
 					BRCA2	/g/strcombio/fsupek_cancer3/malvarez/chromatin_info/DNA_repair__protein_binding/DNA_repair/DSBR/HDR/BRCA2/GSE133450_BRCA2.anno.tsv	#																				DSBR/BRCA2					chip-seq	.tsv
+				- Excluded for having just 7 dna rep marks for the moment
+					UV_XRseq_NHF1_CPD_1h_Rep1	/g/strcombio/fsupek_cancer3/malvarez/chromatin_info/DNA_repair__protein_binding/DNA_repair/NER/UV/XR_seq/merged_strands/GSM1985845_NHF1CPD_1h_Rep1_merged_strands.bw	#						NER/UV/						XR-seq		.bw
+					UV_XRseq_NHF1_CPD_1h_Rep2	/g/strcombio/fsupek_cancer3/malvarez/chromatin_info/DNA_repair__protein_binding/DNA_repair/NER/UV/XR_seq/merged_strands/GSM1985846_NHF1CPD_1h_Rep2_merged_strands.bw	#						NER/UV/						XR-seq		.bw
+					UV_XRseq_NHF1_PP64_1h_Rep2	/g/strcombio/fsupek_cancer3/malvarez/chromatin_info/DNA_repair__protein_binding/DNA_repair/NER/UV/XR_seq/merged_strands/GSM1985862_PP641h_Rep2_merged_merged_strands.bw	#						NER/UV/						XR-seq		.bw
+					UV_XRseq_CSB_CPD_1h	/g/strcombio/fsupek_cancer3/malvarez/chromatin_info/DNA_repair__protein_binding/DNA_repair/NER/UV/XR_seq/merged_strands/GSE67941_CSBCPD_Merged_merged_strands.bw	#									NER/UV/						XR-seq		.bw
+					UV_XRseq_CSB_PP64_1h_Rep1	/g/strcombio/fsupek_cancer3/malvarez/chromatin_info/DNA_repair__protein_binding/DNA_repair/NER/UV/XR_seq/merged_strands/GSM1985869_CSB64_Rep1_merged_strands.bw	#								NER/UV/						XR-seq		.bw
+					UV_XRseq_CSB_PP64_1h_Rep2	/g/strcombio/fsupek_cancer3/malvarez/chromatin_info/DNA_repair__protein_binding/DNA_repair/NER/UV/XR_seq/merged_strands/GSM1985870_CSB64_Rep2_merged_strands.bw	#								NER/UV/						XR-seq		.bw
+					UV_XRseq_XPC_CPD_1h	/g/strcombio/fsupek_cancer3/malvarez/chromatin_info/DNA_repair__protein_binding/DNA_repair/NER/UV/XR_seq/merged_strands/GSE67941_XPCCPD_Merged_merged_strands.bw	#									NER/UV/						XR-seq		.bw
+					UV_XRseq_XPC_PP64_1h	/g/strcombio/fsupek_cancer3/malvarez/chromatin_info/DNA_repair__protein_binding/DNA_repair/NER/UV/XR_seq/merged_strands/GSE67941_XPC64_Merged_merged_strands.bw	#									NER/UV/						XR-seq		.bw
+					MSH6_H2O2	/g/strcombio/fsupek_cancer3/malvarez/chromatin_info/DNA_repair__protein_binding/DNA_repair/MMR/MSH6_SETD2_H3K36me3_guominli/2_fold_enrichment_vs_input/bedgraphs_fold_enrich/SRR13314133_sorted_FE.bdg	#		MMR/MSH6/H2O2				chip-seq	.bedGraph
+					SETD2_H2O2	/g/strcombio/fsupek_cancer3/malvarez/chromatin_info/DNA_repair__protein_binding/DNA_repair/MMR/MSH6_SETD2_H3K36me3_guominli/2_fold_enrichment_vs_input/bedgraphs_fold_enrich/SRR13314135_sorted_FE.bdg	#		MMR/SETD2/H2O2				chip-seq	.bedGraph
 
 
 chromatin feature: replication time pooled8
-
-
-offset: log(N trinuc) of each RT bin and N(C/T)N combination (6 × 32 = 192)

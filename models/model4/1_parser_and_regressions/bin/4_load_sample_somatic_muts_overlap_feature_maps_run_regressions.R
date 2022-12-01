@@ -1,18 +1,21 @@
 library(tidyverse)
 library(data.table)
-# BiocManager::install('XVector', 'GenomicRanges', 'rtracklayer')
 library(GenomicRanges)
 library(rtracklayer)
 library(valr) # for granges merging
+library(rlang)
 library(MASS)
 library(lme4)
+library(broom.mixed)
 library(conflicted)
 conflict_prefer("filter", "dplyr")
 conflict_prefer("rename", "dplyr")
 conflict_prefer("select", "dplyr")
+conflict_prefer("slice", "dplyr")
 conflict_prefer("map", "purrr")
 conflict_prefer("extract", "magrittr")
 conflict_prefer("reduce", "IRanges")
+conflict_prefer("expand", "tidyr")
 
 
 ### load sample; merge with dna repair, chromatin landscape, and offset; parse; regression
@@ -35,47 +38,46 @@ metadata_sample = ifelse(interactive(),
   read_tsv %>% filter(sample_id == sample)
 
 dnarep_marks = ifelse(interactive(),
-                      yes = "../input_lists/dnarep_marks.tsv",
+                      yes = "../input_lists/dnarep_marks.csv",
                       no = args[4]) %>%
-  read_tsv(comment = "#")
+  read_csv(comment = "#")
 
 chromatin_features = ifelse(interactive(),
-                            yes = "../input_lists/chromatin_features.tsv",
+                            yes = "../input_lists/chromatin_features.csv",
                             no = args[5]) %>%
-  read_tsv(comment = "#")
+  read_csv(comment = "#")
 
-# specify which (if >1) offset file to use from the offset paths table; this offset file's name has to match the name of its column which contains the offset values
-offset_name = "log_freq_trinuc32_RepliSeq6"
+
+# load offset from 3rd process
 offset = ifelse(interactive(),
-                yes = "../input_lists/offset.tsv",
+                yes = "/g/strcombio/fsupek_data/users/malvarez/projects/RepDefSig/models/model4/1_parser_and_regressions/work/bb/a5719cbc4e57fb00d25a4dc24c6ad8/offset.tsv",
                 no = args[6]) %>% 
-  read_tsv(comment = "#") %>% 
-  filter(name == offset_name) %>% 
-  pull(path) %>% 
   read_tsv
 # rename the chromatin environment column (typically 'RepliSeq') to match the "mb_domain" name given to the general mutation table
 colnames(offset)[1] = "mb_domain"
-offset = select(offset,
-                c("mb_domain", "tri", offset_name))
 
 
-# load map_features from previous process
-
+# load map_features (all chromosomes) from 2nd process
 map_features = ifelse(interactive(),
-                      yes = "../work/0b/7a581d0a5f7bb7762b2b7fcf320cab/map_features.tsv",
-                      no = "map_features.tsv") %>% 
+                      yes = "../res/map_features.tsv",
+                      no = paste0(args[7], "/res/map_features.tsv")) %>% 
   fread %>% as_tibble
-
 gc()
+
+
+# load collected median_scores from 1st process
+median_scores = lapply(args[-(1:7)], read_tsv) %>% #lapply(Sys.glob("/g/strcombio/fsupek_data/users/malvarez/projects/RepDefSig/models/model4/1_parser_and_regressions/work/5f/e00a01f8e67e5ac4c3ee5ba58f775c/median_score_*.tsv"), read_tsv) %>%
+  Reduce(function(x, y) bind_rows(x, y), .)
 
 
 ## load sample
 somatic_mutations_granges = read_csv(paste0(path_somatic_variation, sample, ".csv")) %>%
   select(chr, start, end, tri) %>% 
-  # add +-50bp buffer around each SNV (i.e. 0.1kb windows), to ensure most of them overlap with reptime and DNA mark genomic ranges
+  # add +-50bp buffer around each SNV (i.e. 0.1kb windows), to ensure most of them overlap with reptime and DNA mark genomic ranges (I still lose quite a lot)
   mutate(start = start - 50,
          end = end + 50) %>%
   makeGRangesFromDataFrame(keep.extra.columns = T)
+gc()
 
 
 ## map chromatin features
@@ -85,23 +87,20 @@ dfright = data.frame(somatic_mutations_granges) %>%
 
 dfleft = data.frame(map_features) %>% 
   rename("chrom" = "seqnames")
-
-# calculate medians each dna repair for later binarization
-dnarep_marks_medians = list()
-for(dnarep_mark_name in dnarep_marks$name){
-  dnarep_marks_medians[[dnarep_mark_name]] = median(dfleft[[dnarep_mark_name]])
-}
+gc()
 
 merged = bed_intersect(dfleft, dfright, suffix = c("_dfleft",
                                                    "_dfright")) %>%
   select(-c(contains("chrom"), contains("start_"), contains("end_"), contains("width_"), contains("strand_"))) %>%
   ## weighted averages of chromatin feature bins and dna repair abundances
   mutate(`.overlap` = `.overlap` + 1) %>%
-  group_by(mut_id_dfright) %>%
-  summarise(total_overlaps_length = sum(`.overlap`), across()) %>%
-  mutate_at(vars(!contains("mut_id_dfright") & !contains("total_overlaps_length") & !contains("tri_dfright") & !contains(".overlap")),
-            ~. * `.overlap` / total_overlaps_length) %>%
   group_by(mut_id_dfright, tri_dfright) %>%
+  # first get total bp of genome chunks with RT + dna marks info with which the SNV window overlap (max. 101)
+  summarise(total_overlaps_length = sum(`.overlap`), across()) %>%
+  # now calculate weighted (based on chunk length by total overlapping length of the window) RT and dna marks scores
+  mutate_at(vars(!contains("mut_id_dfright") & !contains("tri_dfright") & !contains("total_overlaps_length") & !contains(".overlap")),
+            ~. * `.overlap` / total_overlaps_length) %>%
+  # ... and sum them across each SNV (mut_id)
   summarise_at(vars(!contains("mut_id_dfright") & !contains("total_overlaps_length") & !contains("tri_dfright") & !contains(".overlap")),
                ~sum(.)) %>%
   ungroup %>% 
@@ -115,37 +114,34 @@ merged = bed_intersect(dfleft, dfright, suffix = c("_dfleft",
   # binarize weighted average DNA repair value by being lower or larger than the across-genome median
   rowwise %>% 
   mutate_at(vars(contains(match = dnarep_marks$name)),
-            function(x){
-              var_name = rlang::as_label(substitute(x))
-              ifelse(x <= dnarep_marks_medians[[var_name]],
-                     "low",
-                     "high")
-              }
-            )
-merged
+            function(x){var_name = rlang::as_label(substitute(x))
+                        ifelse(x <= filter(median_scores, dnarep_mark == var_name)$median_score,
+                               "low",
+                               "high")})
 gc()
 
 
 ## add mutation counts per trinuc×mb_domain
+trinuc_96 = c("A(C>A)A", "A(C>A)C", "A(C>A)G", "A(C>A)T", "A(C>G)A", "A(C>G)C", "A(C>G)G", "A(C>G)T", "A(C>T)A", "A(C>T)C", "A(C>T)G", "A(C>T)T", "A(T>A)A", "A(T>A)C", "A(T>A)G", "A(T>A)T", "A(T>C)A", "A(T>C)C", "A(T>C)G", "A(T>C)T", "A(T>G)A", "A(T>G)C", "A(T>G)G", "A(T>G)T", "C(C>A)A", "C(C>A)C", "C(C>A)G", "C(C>A)T", "C(C>G)A", "C(C>G)C", "C(C>G)G", "C(C>G)T", "C(C>T)A", "C(C>T)C", "C(C>T)G", "C(C>T)T", "C(T>A)A", "C(T>A)C", "C(T>A)G", "C(T>A)T", "C(T>C)A", "C(T>C)C", "C(T>C)G", "C(T>C)T", "C(T>G)A", "C(T>G)C", "C(T>G)G", "C(T>G)T", "G(C>A)A", "G(C>A)C", "G(C>A)G", "G(C>A)T", "G(C>G)A", "G(C>G)C", "G(C>G)G", "G(C>G)T", "G(C>T)A", "G(C>T)C", "G(C>T)G", "G(C>T)T", "G(T>A)A", "G(T>A)C", "G(T>A)G", "G(T>A)T", "G(T>C)A", "G(T>C)C", "G(T>C)G", "G(T>C)T", "G(T>G)A", "G(T>G)C", "G(T>G)G", "G(T>G)T", "T(C>A)A", "T(C>A)C", "T(C>A)G", "T(C>A)T", "T(C>G)A", "T(C>G)C", "T(C>G)G", "T(C>G)T", "T(C>T)A", "T(C>T)C", "T(C>T)G", "T(C>T)T", "T(T>A)A", "T(T>A)C", "T(T>A)G", "T(T>A)T", "T(T>C)A", "T(T>C)C", "T(T>C)G", "T(T>C)T", "T(T>G)A", "T(T>G)C", "T(T>G)G", "T(T>G)T")
 sommut_tricount_dnarep_chromatin = merged %>%
   select(-mut_id) %>% 
   table %>%
   as.data.frame %>%
-  rename("mutcount" = "Freq") %>%
-  # dont care about trinuc×mb_domain with no reported SNVs for this sample
-  filter(mutcount != 0)
-
-## parse and add offset
-sommut_tricount_dnarep_chromatin$mb_domain = factor(sommut_tricount_dnarep_chromatin$mb_domain, ordered = T)
-trinuc_96 = c("A(C>A)A", "A(C>A)C", "A(C>A)G", "A(C>A)T", "A(C>G)A", "A(C>G)C", "A(C>G)G", "A(C>G)T", "A(C>T)A", "A(C>T)C", "A(C>T)G", "A(C>T)T", "A(T>A)A", "A(T>A)C", "A(T>A)G", "A(T>A)T", "A(T>C)A", "A(T>C)C", "A(T>C)G", "A(T>C)T", "A(T>G)A", "A(T>G)C", "A(T>G)G", "A(T>G)T", "C(C>A)A", "C(C>A)C", "C(C>A)G", "C(C>A)T", "C(C>G)A", "C(C>G)C", "C(C>G)G", "C(C>G)T", "C(C>T)A", "C(C>T)C", "C(C>T)G", "C(C>T)T", "C(T>A)A", "C(T>A)C", "C(T>A)G", "C(T>A)T", "C(T>C)A", "C(T>C)C", "C(T>C)G", "C(T>C)T", "C(T>G)A", "C(T>G)C", "C(T>G)G", "C(T>G)T", "G(C>A)A", "G(C>A)C", "G(C>A)G", "G(C>A)T", "G(C>G)A", "G(C>G)C", "G(C>G)G", "G(C>G)T", "G(C>T)A", "G(C>T)C", "G(C>T)G", "G(C>T)T", "G(T>A)A", "G(T>A)C", "G(T>A)G", "G(T>A)T", "G(T>C)A", "G(T>C)C", "G(T>C)G", "G(T>C)T", "G(T>G)A", "G(T>G)C", "G(T>G)G", "G(T>G)T", "T(C>A)A", "T(C>A)C", "T(C>A)G", "T(C>A)T", "T(C>G)A", "T(C>G)C", "T(C>G)G", "T(C>G)T", "T(C>T)A", "T(C>T)C", "T(C>T)G", "T(C>T)T", "T(T>A)A", "T(T>A)C", "T(T>A)G", "T(T>A)T", "T(T>C)A", "T(T>C)C", "T(T>C)G", "T(T>C)T", "T(T>G)A", "T(T>G)C", "T(T>G)G", "T(T>G)T")
-sommut_tricount_dnarep_chromatin$tri = factor(sommut_tricount_dnarep_chromatin$tri, ordered = T, levels = trinuc_96)
-sommut_tricount_dnarep_chromatin = sommut_tricount_dnarep_chromatin %>%
+  rename("mutcount" = "Freq") %>% 
   ## add offset
-  merge(offset) %>%
+  merge(offset, all = T) %>%
+  replace_na(list(mutcount = 0)) %>% 
   relocate(mutcount) %>%
-  relocate(mb_domain, .before = "log_freq_trinuc32_RepliSeq6") %>%
+  relocate(mb_domain, .before = "log_freq_trinuc32") %>%
   relocate(tri, .after = "mb_domain") %>%
-  arrange(tri, mb_domain)
+  # dna rep mark levels as ordered factors
+  mutate_at(vars(contains(match = dnarep_marks$name)),
+            ~ factor(., ordered = T, levels = c('low', 'high'))) %>% 
+  # mb_domain and tri as ordered and unordered factors, respectively
+  mutate(mb_domain = factor(mb_domain, ordered = T),
+         tri = factor(tri, ordered = F, levels = trinuc_96)) %>% 
+  arrange(tri, mb_domain) %>% 
+  as_tibble
 
 rm(merged) ; gc()
 
@@ -156,7 +152,7 @@ formula = paste0("mutcount ~ ",
                  paste(dnarep_marks$name, collapse = " + "), " + ",
                  "(1 | mb_domain) + ",
                  "(1 | tri) + ",
-                 "offset(log_freq_trinuc32_RepliSeq6)")
+                 "offset(log_freq_trinuc32)")
 
 # first try a generalized linear mixed-effects model for the negative binomial family
 y = tryCatch(glmer.nb(formula = formula, 
@@ -179,6 +175,6 @@ y = tryCatch(glmer.nb(formula = formula,
 ## append features' coefficients and pvalues to metadata_sample
 results_sample = full_join(metadata_sample, y) %>%
   relocate(sample_id)
+gc()
 
 write_tsv(results_sample, "results_sample.tsv")
-gc()
