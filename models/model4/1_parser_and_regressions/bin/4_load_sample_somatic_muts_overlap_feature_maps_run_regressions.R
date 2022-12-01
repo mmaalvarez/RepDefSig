@@ -170,11 +170,10 @@ y = tryCatch(glmer.nb(formula = formula,
   select(term, estimate, p.value) %>% 
   pivot_wider(names_from = term, values_from = c(estimate, p.value)) %>%
   mutate(sample_id = sample)
-
+gc()
 
 ## append features' coefficients and pvalues to metadata_sample
 results_sample = full_join(metadata_sample, y) %>%
   relocate(sample_id)
-gc()
 
 write_tsv(results_sample, "results_sample.tsv")
