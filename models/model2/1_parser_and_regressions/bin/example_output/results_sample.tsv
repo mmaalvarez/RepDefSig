@@ -1,2 +1,0 @@
-sample_id	treatment	treatment_concentration	treatment_has_S9	treatment_info	treatment_type	estimate_BPDE_tXRseq_rep1_2strands	estimate_BPDE_tXRseq_rep2_2strands	p.value_BPDE_tXRseq_rep1_2strands	p.value_BPDE_tXRseq_rep2_2strands
-MSM0.1	H2O	0.1%	no	NA	Control	-0.2586100611507583	-0.7552761577923115	0.8713098761560617	0.638855608782517

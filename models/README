@@ -27,7 +27,7 @@
 													replication_time/
 													rna_seq/
 													copy_number/
-	- NOTE: probably will just use Replication time
+	- NOTE: will just use Replication time
 
 			name in chromatin_features.tsv has to match the column name of the feature abundance in its chipseq file, e.g. 'RepliSeq', no 'RepliSeq_6bins'
 

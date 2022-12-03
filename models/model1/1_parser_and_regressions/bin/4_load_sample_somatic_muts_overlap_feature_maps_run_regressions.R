@@ -25,7 +25,7 @@ conflict_prefer("expand", "tidyr")
 args = commandArgs(trailingOnly=TRUE)
 
 sample = ifelse(interactive(),
-                yes = "MSM0.1",
+                yes = "MSM0.1", #"MSM0.103", #"MSM0.124",
                 no = gsub("\\[|\\]", "", args[1])) # after channeling in nextflow, the sample names are contained within brackets, so remove them
 
 path_somatic_variation = ifelse(interactive(),
@@ -57,11 +57,12 @@ offset = ifelse(interactive(),
 colnames(offset)[1] = "mb_domain"
 
 
-# load map_features (all chromosomes) from 2nd process
-map_features = ifelse(interactive(),
-                      yes = "../res/map_features.tsv",
-                      no = paste0(args[7], "/res/map_features.tsv")) %>% 
-  fread %>% as_tibble
+## load map_features (all chromosomes) from 2nd process
+dfleft = ifelse(interactive(),
+                yes = "../res/map_features.tsv",
+                no = paste0(args[7], "/res/map_features.tsv")) %>% 
+  fread %>% as_tibble %>% 
+  rename("chrom" = "seqnames")
 gc()
 
 
@@ -70,25 +71,18 @@ median_scores = lapply(args[-(1:7)], read_tsv) %>% #lapply(Sys.glob("/g/strcombi
   Reduce(function(x, y) bind_rows(x, y), .)
 
 
-## load sample
-somatic_mutations_granges = read_csv(paste0(path_somatic_variation, sample, ".csv")) %>%
+## load sample (somatic mutations)
+dfright = read_csv(paste0(path_somatic_variation, sample, ".csv")) %>%
   select(chr, start, end, tri) %>% 
   # add +-50bp buffer around each SNV (i.e. 0.1kb windows), to ensure most of them overlap with reptime and DNA mark genomic ranges (I still lose quite a lot)
   mutate(start = start - 50,
          end = end + 50) %>%
-  makeGRangesFromDataFrame(keep.extra.columns = T)
-gc()
-
-
-## map chromatin features
-dfright = data.frame(somatic_mutations_granges) %>% 
   rename("chrom" = "seqnames") %>%
   mutate(mut_id = paste0("mut_", row_number()))
-
-dfleft = data.frame(map_features) %>% 
-  rename("chrom" = "seqnames")
 gc()
 
+
+### map chromatin features
 merged = bed_intersect(dfleft, dfright, suffix = c("_dfleft",
                                                    "_dfright")) %>%
   select(-c(contains("chrom"), contains("start_"), contains("end_"), contains("width_"), contains("strand_"))) %>%
