@@ -2,11 +2,19 @@
 all coordinates hg19
 
 
-mutation samples: Nik-Zainal iPSCs (induced pluripotential stem cells)
+mutation samples: 
 
-		- /g/strcombio/fsupek_cancer3/malvarez/WGS_tumors/somatic_variation/cell_lines/kucab_2019
+	- Nik-Zainal iPSCs (induced pluripotential stem cells)
+
+		- /g/strcombio/fsupek_cancer3/malvarez/WGS_tumors/somatic_variation/cell_lines/kucab_2019/processed/data/
 	
-		- Only including 84 samples == the controls, and the treated samples whose mutation burden is above the mean mut burden of the controls (done in kucab_2019/processed/list_treated_samples_mutburden_above_mean_of_controls.R)
+		- Only including 84 samples: controls + treated samples whose mutation burden is above the mean mut burden of the controls (done in kucab_2019/processed/list_treated_samples_mutburden_above_mean_of_controls.R)
+	
+	- Zou CRISPR KO cell line (mutagenesis induced by loss of a given DNA repair gene)
+
+		- /g/strcombio/fsupek_cancer3/malvarez/WGS_tumors/somatic_variation/cell_lines/zou_2021/processed/data/
+
+		- Only including 63 samples: controls + "   "	"   "   "   "
 
 
 dna repair: 
@@ -54,6 +62,7 @@ dna repair:
 					UV_tXRseq_GM12878_CPD_4h_Rep1	/g/strcombio/fsupek_cancer3/malvarez/chromatin_info/DNA_repair__protein_binding/DNA_repair/NER/UV/tXR_seq/merged_strands/GSM2575209_CPD4HE1sorted_scaled_merged_strands.bw	#				NER/UV/						tXR-seq		.bw
 					UV_tXRseq_GM12878_CPD_4h_Rep2	/g/strcombio/fsupek_cancer3/malvarez/chromatin_info/DNA_repair__protein_binding/DNA_repair/NER/UV/tXR_seq/merged_strands/GSM2575210_CPD4HE2sorted_scaled_merged_strands.bw	#				NER/UV/						tXR-seq		.bw
 					BRCA2	/g/strcombio/fsupek_cancer3/malvarez/chromatin_info/DNA_repair__protein_binding/DNA_repair/DSBR/HDR/BRCA2/GSE133450_BRCA2.anno.tsv	#																				DSBR/BRCA2					chip-seq	.tsv
+				
 				- Excluded for having just 7 dna rep marks for the moment
 					UV_XRseq_NHF1_CPD_1h_Rep1	/g/strcombio/fsupek_cancer3/malvarez/chromatin_info/DNA_repair__protein_binding/DNA_repair/NER/UV/XR_seq/merged_strands/GSM1985845_NHF1CPD_1h_Rep1_merged_strands.bw	#						NER/UV/						XR-seq		.bw
 					UV_XRseq_NHF1_CPD_1h_Rep2	/g/strcombio/fsupek_cancer3/malvarez/chromatin_info/DNA_repair__protein_binding/DNA_repair/NER/UV/XR_seq/merged_strands/GSM1985846_NHF1CPD_1h_Rep2_merged_strands.bw	#						NER/UV/						XR-seq		.bw

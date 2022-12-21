@@ -1,7 +1,10 @@
 library(tidyverse)
 library(data.table)
-library(sampling)
+library(FactoMineR)
+library(factoextra)
+library(cowplot)
 library(parallel)
+library(msm) # rtnorm
 library(NMF) # for NMF in first part (bootstrap) to determine optimal k signatures
 library(RcppML) # for final NMF
 library(lsa)
@@ -20,52 +23,174 @@ conflict_prefer("parLapply", "parallel")
 conflict_prefer("parLapplyLB", "parallel")
 conflict_prefer("nmf", "NMF")
 
-
 dir.create("plots")
+
+jet.colors = colorRampPalette(c("gray", "red", "yellow", "green", "cyan", "blue", "magenta", "black"))
 
 
 ##### parse input
 
-metadata = read_tsv("/g/strcombio/fsupek_cancer3/malvarez/WGS_tumors/somatic_variation/cell_lines/kucab_2019/processed/sample_treatments.tsv") %>% 
+metadata = c("/g/strcombio/fsupek_cancer3/malvarez/WGS_tumors/somatic_variation/cell_lines/kucab_2019/processed/sample_treatments.tsv",
+             "/g/strcombio/fsupek_cancer3/malvarez/WGS_tumors/somatic_variation/cell_lines/zou_2021/processed/sample_gene_ko.tsv") %>% 
+  # only sample_id and info* columns are selected
+  map_df(~read_tsv(.x) %>% 
+           select(sample_id, starts_with("info"))) %>% 
   rename("Sample" = "sample_id") %>% 
-  mutate(treatment_type = gsub("DNA damage response inhibitors",
-                               "DNA damage resp. inh.",
-                               treatment_type))
+  mutate(dataset = ifelse(str_detect(Sample, "MSM0"),
+                          "Kucab et al. 2019",
+                          ifelse(str_detect(Sample, "MSK0"),
+                                 "Zou et al. 2021",
+                                 "ERROR: Unexpected sample name")),
+         info1 = ifelse(str_detect(Sample, "MSK0"),
+                        paste0(info1, "ko"),
+                        ifelse(str_detect(Sample, "MSM0"),
+                               info1,
+                               "ERROR: Unexpected sample name")),
+         info2 = gsub("^[a-z]_", "", info2), 
+         info2 = gsub("DNA damage response inhibitors", "DNA damage resp. inh.", info2),
+         info2 = ifelse(str_detect(Sample, "MSK0"),
+                        paste0(info2, " (pathway)"),
+                        ifelse(str_detect(Sample, "MSM0"),
+                               paste0(info2, " (treatment)"),
+                               "ERROR: Unexpected sample name")))
 
 # load results of regressions and just keep sample_id and coefficients for DNA repair marks
-results_regressions = read_tsv("../1_parser_and_regressions/res/results.tsv") %>%
+results_regressions = read_tsv("../1_parser_and_regressions/res/results.tsv") %>% #../1_parser_and_regressions/bin/output/results.tsv") %>% #../../model1/1_parser_and_regressions/res/results.tsv") %>%
   # make sure all samples are in the metadata table
   filter(sample_id %in% metadata$Sample) %>% 
-  select(sample_id, contains("estimate_"))
-
-# a) keep positive coefficients, and convert negative to zero 
-results_regressions_posmatrix = results_regressions %>% 
-  mutate_if(is.numeric,
-            ~if_else(.<=0, 0, .))
-
-# b) convert positive coefficients to zero, and convert negative to positive
-results_regressions_negmatrix = results_regressions %>% 
-  mutate_if(is.numeric,
-            ~if_else(.>=0, 0, abs(.)))
+  select(sample_id, contains("estimate_"), contains("conf"), glm)
 
 
+
+#########################################################################
+### PCA to look for biases regarding which samples were regressed with which glm family
+pca_res = results_regressions %>% 
+  select(sample_id, contains("estimate_")) %>% 
+  column_to_rownames("sample_id") %>% 
+  rename_with(~str_replace(., 'estimate_', '')) %>% 
+  rename_with(~str_replace(., '.L', '')) %>%
+  PCA(graph = FALSE)
+
+pca = results_regressions %>%
+  merge(pca_res$ind$coord %>% 
+          data.frame %>% 
+          rownames_to_column("sample_id")) %>% 
+  select(sample_id, contains("Dim"), glm) %>% 
+  rename_with(~str_replace(., 'Dim.', 'PC')) %>% 
+  rename("Sample" = "sample_id") %>% 
+  merge(metadata) %>% 
+  ggplot(aes(x = PC1,
+             y = PC2)) +
+  coord_fixed() +
+  geom_point(aes(fill = info2,
+                 shape = glm)) +
+  stat_ellipse(geom = "polygon",
+               aes(col = glm),
+               alpha = 0,
+               show.legend = T,
+               level = 0.95) +
+  scale_fill_manual(values = jet.colors(length(unique(metadata$info2)))) +
+  scale_color_manual(values = jet.colors(length(unique(metadata$dataset)))) +
+  scale_shape_manual(values = c(21, 24)) +
+  guides(fill = guide_legend(override.aes = list(size=6, shape=21))) +
+  geom_hline(yintercept = 0, lty = 2) +
+  geom_vline(xintercept = 0, lty = 2) +
+  ggrepel::geom_text_repel(aes(label = info1),
+                           force = 5,
+                           segment.size = 0.1,
+                           min.segment.length = 0.001,
+                           max.overlaps = 100000,
+                           max.iter = 100000) +
+  theme_classic() +
+  theme(panel.grid = element_blank(),
+        panel.border = element_rect(fill= "transparent"),
+        axis.title.x = element_text(size = 18),
+        axis.title.y = element_text(size = 18),
+        axis.text.x = element_text(size = 18),
+        axis.text.y = element_text(size = 18),
+        legend.text = element_text(size=15),
+        legend.title = element_blank())
+ggsave("plots/pca.svg",
+       plot = pca,
+       device = "svg",
+       width = 20,
+       height = 15.6,
+       dpi = 600,
+       bg = "white")
+
+scree = fviz_eig(pca_res,
+                 ylim = c(0, round(max(pca_res$eig[,2]))),
+                 geom = c("bar"),
+                 addlabels = FALSE,
+                 ncp = length(rownames(pca_res$eig)),
+                 main = "",
+                 ggtheme = theme_classic(base_size = 20),
+                 xlab = "PC",
+                 ylab = "% variance")
+ggsave("plots/scree.svg",
+       plot = scree,
+       device = "svg",
+       width = 10,
+       height = 5.6,
+       dpi = 600,
+       bg = "transparent")
+
+vars = pca_res$var$coord %>%
+  data.frame() %>%
+  rename_with(~str_replace(., 'Dim.', 'PC')) %>% 
+  rownames_to_column("vars") %>% 
+  ggplot() +
+  geom_segment(aes(x = 0, xend = PC1,
+                   y = 0, yend = PC2),
+               arrow = arrow(length = unit(0.025,
+                                           "npc"),
+                             type = "open"),
+               lwd = 0.5,
+               linetype = "dashed") +
+  ggrepel::geom_text_repel(aes(x = PC1,
+                               y = PC2,
+                               label = vars),
+                           size = 6,
+                           direction = "y",
+                           vjust = 3,
+                           force = 5,
+                           segment.size = 0,
+                           min.segment.length = 0,
+                           max.iter = 100000) +
+  theme_nothing()
+ggsave("plots/vars.svg",
+       plot = vars,
+       device = "svg",
+       width = 10,
+       height = 5.6,
+       dpi = 600,
+       bg = "transparent")
+
+
+
+#####################################################################
+#### NMF
+#####################################################################
+
+
+###################################################################
 #### evaluate best combination of n variables and k signatures
 
-# merge converted coefficients into the NMF input
-coefficient_matrix = merge(results_regressions_posmatrix,
-                           results_regressions_negmatrix,
-                           by = "sample_id",
-                           suffixes = c("_poscoeff", "_negcoeff")) %>%
-  column_to_rownames("sample_id") %>% 
-  rename_all(~str_replace_all(., 'estimate_', '')) %>% 
-  ## WARNING: I'm MULTIPLYING all coefficients by 100, so there are no decimals (UPmultinomial only works with whole numbers, so it converts e.g. 0.2 to 0...)
-  mutate(across(where(is.numeric), 
-                ~.x * 100)) %>% 
-  as.matrix
+coefficient_table = results_regressions %>%
+  select(sample_id, contains("estimate_"), contains("conf")) %>% 
+  rename_all(~str_replace_all(., '.L', '')) %>% 
+  rename_all(~str_replace_all(., 'estimate_', 'estimate ')) %>% 
+  rename_all(~str_replace_all(., 'conf.high_', 'conf.high ')) %>% 
+  rename_all(~str_replace_all(., 'conf.low_', 'conf.low ')) %>% 
+  pivot_longer(cols = -sample_id , names_to = 'stat_mark', values_to = 'value') %>% 
+  separate(stat_mark, into = c("stat", "mark"), sep = " ") %>% 
+  arrange(sample_id, mark) %>% 
+  pivot_wider(names_from = stat) %>% 
+  group_by(sample_id, mark)
 
 ## Parameters and initializing of some objects
 totalNumIters = 100
-maxK = length(colnames(coefficient_matrix)) / 2  # max number of signatures to consider, it will go from 2 to maxK -- shouldn't be larger than nº of features, which is length(colnames(coefficient_matrix)) / 2 because matrix is duplicated into 2 submatrices (positive and negative coefficients)
+maxK = length(unique(coefficient_table$mark)) # max number of signatures to consider, it will go from 2 to maxK -- shouldn't be larger than nº of features
 nCPUs = 8
 set.seed(1)
 
@@ -74,22 +199,46 @@ nmfHmatAllByFact = list()
 nmfWmatAllByFact = list()
 coefficient_matrix_Resamp = list()
 
+## Generate matrices resampling betas from their CI95% distributions (instead of UPmultinomial)
+resample_from_CI = function(coefficient_table){
+  coefficient_table %>% 
+    summarise(resampled_estimate = rtnorm(n = 1,
+                                          mean = estimate,
+                                          sd = 1, 
+                                          lower = conf.low,
+                                          upper = conf.high))
+}
 
-## Generate matrices with small random perturbations of the original matrix 
 for (nIter in 1:totalNumIters) {
   cat(sprintf("Generating bootstrap matrix: nIter %d\n", nIter))
-  coefficient_matrix_TempIter = matrix(data = NA,
-                                       nrow = nrow(coefficient_matrix), ncol = ncol(coefficient_matrix),
-                                       dimnames = list(rownames(coefficient_matrix), colnames(coefficient_matrix))
-  )
-  for (aRow in 1:nrow(coefficient_matrix)) {
-    # for each sample (row in input matrix) change coefficients a bit, while keeping the total sum the same
-    coefficient_matrix_TempIter[aRow,] = UPmultinomial(coefficient_matrix[aRow,]) / 100 # WARNING: dividing back by 100 to compensate the *100 in the coefficient_matrix making step
-  }
+  
+  # for each sample (row) resample coefficients from CI95% distrs.
+  coefficient_matrix_TempIter = resample_from_CI(coefficient_table) %>% 
+    pivot_wider(names_from = mark, values_from = resampled_estimate) %>% 
+    ungroup
+    
+  # a) keep positive coefficients, and convert negative to zero 
+  coefficient_matrix_TempIter_posmatrix = coefficient_matrix_TempIter %>% 
+    mutate_if(is.numeric,
+              ~if_else(.<=0, 0, .))
+  # b) convert positive coefficients to zero, and convert negative to positive
+  coefficient_matrix_TempIter_negmatrix = coefficient_matrix_TempIter %>% 
+      mutate_if(is.numeric,
+                ~if_else(.>=0, 0, abs(.)))
+  # merge converted coefficients into the NMF input
+  coefficient_matrix_TempIter = merge(coefficient_matrix_TempIter_posmatrix,
+                                      coefficient_matrix_TempIter_negmatrix,
+                                      by = "sample_id",
+                                      suffixes = c("_poscoeff", "_negcoeff")) %>%
+    column_to_rownames("sample_id") %>%
+    data.matrix
+  
   attr(coefficient_matrix_TempIter, "nIter") = nIter
-  coefficient_matrix_Resamp[[nIter]] = coefficient_matrix_TempIter;
+  
+  coefficient_matrix_Resamp[[nIter]] = coefficient_matrix_TempIter
+  gc()
 }
-rm(coefficient_matrix_TempIter, nIter)
+rm(coefficient_matrix_TempIter)
 
 
 ## Run NMF for each matrix generated in the previous step
@@ -137,7 +286,7 @@ stopCluster(cl)
 rm(idString, nmfOutput, nFact)
 
 
-## NEW: subtract results of pos - results of neg, and get the absolute
+## Subtract results of pos - results of neg, and get the absolute
 nmfHmatAllByFact_combined_pos_negcoeff = nmfHmatAllByFact %>% 
   map(., ~as_tibble(.x, rownames = NA)) %>%
   map(., ~rownames_to_column(.x, "id")) %>%
@@ -162,11 +311,11 @@ nmfHmatAllByFact_combined_pos_negcoeff = nmfHmatAllByFact %>%
   map(., ~column_to_rownames(.x, 'id')) %>%
   # arrange dna repair mark names (columns)
   map(.f = list(. %>% select(results_regressions_posmatrix %>% 
-                               select(contains("estimate")) %>% 
-                               names() %>% 
-                               gsub("estimate_", "", .)))) %>%
+                             select(contains("estimate")) %>% 
+                             names() %>% 
+                             gsub("estimate_", "", .) %>% 
+                             gsub(".L", "", .)))) %>%
   map(., ~as.matrix(.x))
-
 
 
 
@@ -267,9 +416,23 @@ ggsave("plots/NMF_heatmap_clustering.jpg",
 
 
 
-###### now run the final NMF using the optimal k and n features
+#################################################################################
+###### now run the final NMF knowing the optimal k and n features
 
-# regenerate the coeff matrix (without mult. by 100) and transpose, for RcppML::nmf()
+## split the original results_regressions between pos and neg
+
+# a) keep positive coefficients, and convert negative to zero 
+results_regressions_posmatrix = results_regressions %>% 
+  select(sample_id, contains("estimate_")) %>% 
+  mutate_if(is.numeric,
+            ~if_else(.<=0, 0, .))
+# b) convert positive coefficients to zero, and convert negative to positive
+results_regressions_negmatrix = results_regressions %>% 
+  select(sample_id, contains("estimate_")) %>% 
+  mutate_if(is.numeric,
+            ~if_else(.>=0, 0, abs(.)))
+
+# regenerate the coeff matrix and transpose, for RcppML::nmf()
 coefficient_matrix_RcppML = bind_rows(mutate(results_regressions_posmatrix, submatrix = "poscoeff"),
                                       mutate(results_regressions_negmatrix, submatrix = "negcoeff")) %>% 
   pivot_longer(cols = contains("estimate"),
@@ -282,6 +445,62 @@ coefficient_matrix_RcppML = bind_rows(mutate(results_regressions_posmatrix, subm
   column_to_rownames("dna_repair_mark") %>% 
   as.matrix
 
+
+## prepare condition_pathway_pairs for "good-model-score"
+repair_mark_pathways = results_regressions %>% 
+  select(contains("estimate")) %>% 
+  rename_with(~str_replace(., 'estimate_', '')) %>% 
+  rename_with(~str_replace(., '.L', '')) %>% 
+  colnames %>% 
+  data.frame %>% 
+  `colnames<-`("dna_repair_mark") %>% 
+  mutate(putative_repair_pathway_involved = ifelse(str_detect(dna_repair_mark, "OGG1_"),
+                                                  "BER",
+                                                  ifelse(str_detect(dna_repair_mark, "UV_"),
+                                                         "NER",
+                                                         ifelse(str_detect(dna_repair_mark, "MSH6_|SETD2_"),
+                                                                "MMR",
+                                                                ifelse(str_detect(dna_repair_mark, "XRCC4"),
+                                                                       "DSBR",
+                                                                       NA)))))
+condition_pathway_pairs = metadata %>% 
+  select(info1, info2) %>% 
+  distinct %>% 
+  filter(! str_detect(info2, "[C,c]ontrol|[O,o]ther")) %>% 
+  mutate(putative_repair_pathway_involved = ifelse(str_detect(info1, "[G,g]amma"),
+                                                   "BER,DSBR",
+                                                   ifelse(str_detect(info2, "BER |[A,a]lkylating|[N,n]itrosamine"),
+                                                          "BER",
+                                                          ifelse(str_detect(info2, "NER |[A,a]romatic|[H,h]eterocyclic|PAH|Radiation") |
+                                                                   str_detect(info1, "platin"),
+                                                                 "NER",
+                                                                 ifelse(str_detect(info2, "MMR "),
+                                                                        "MMR",
+                                                                        ifelse(str_detect(info2, "DSB|DNA damage resp. inh.|[H,h]elicas|NHEJ|MMEJ|HR ") |
+                                                                                 str_detect(info1, "Etoposide|Bleomycin|Camptothecin|Olaparib|Temozolomide|Melphalan|Cyclophosphamide|Mechlorethamine"),
+                                                                               "DSBR",
+                                                                               NA)))))) %>% 
+  separate_rows(putative_repair_pathway_involved, sep = ",") %>% 
+  filter(!is.na(putative_repair_pathway_involved)) %>% 
+  left_join(metadata) %>% 
+  filter(Sample %in% results_regressions$sample_id) %>% 
+  arrange(putative_repair_pathway_involved) %>% 
+  left_join(repair_mark_pathways) %>% 
+  select(Sample, dna_repair_mark) %>% 
+  rename("DNA repair\nactivity" = "dna_repair_mark") %>% 
+  group_by(Sample) %>%
+  mutate(Sample_possible_marks = n()) %>%
+  ungroup()
+condition_pathway_pairs = condition_pathway_pairs %>% 
+  rowwise %>% 
+  mutate(max_sample_mark_score = 1 / length(unique(condition_pathway_pairs$Sample)) / Sample_possible_marks) %>%
+  select(-c(Sample_possible_marks))
+condition_pathway_pairs = condition_pathway_pairs %>% 
+  rowwise %>% 
+  mutate(max_sample_mark_score = max_sample_mark_score / sum(condition_pathway_pairs$max_sample_mark_score))
+
+
+## I actually run all k´s possible
 for(optimal_k in seq(2, maxK)){
   
   # final NMF (here using RcppML::nmf instead of NMF::nmf as above)
@@ -297,27 +516,10 @@ for(optimal_k in seq(2, maxK)){
     pivot_longer(cols = !contains("Signature"), names_to = "Sample", values_to = "Exposure") %>% 
     # add metadata info (e.g. treatments, MSI, HR, smoking...)
     left_join(metadata) %>% 
-    mutate(Signature = factor(Signature, levels = unique(rownames(data.frame(nmf_res$h))))
-           #MSI_parsed = ifelse(MSI_status %in% c("HYPER", "MSI", "ERCC2mut"), "MSI", NA),
-           #hr_parsed = ifelse(hr_status %in% c("HR_deficient"), "HRdef", NA),
-           #smoking_history_parsed = ifelse(smoking_history %in% c("Current", "Former"), "Smoker", NA),
-           #treatment_platinum_parsed = ifelse(treatment_platinum == "TRUE", "Platinum", NA),
-           #treatment_5FU_parsed = ifelse(treatment_5FU == "TRUE", "5FU", NA)
-           ) %>%
-    #unite(col = "Metadata", MSI_parsed, hr_parsed, smoking_history_parsed,treatment_platinum_parsed, treatment_5FU_parsed, na.rm = T, sep = " & ") %>% 
-    #mutate(Metadata = gsub("^$", "NOTA/NA", Metadata)) %>% 
-    #rename("Database" = "source") %>% 
+    mutate(Signature = factor(Signature, levels = unique(rownames(data.frame(nmf_res$h))))) %>%
     # highlight top hits for each signature
     group_by(Signature) %>% 
-    mutate(is.hit = ifelse(Exposure==max(Exposure), "hit", NA)
-           #has.Metadata = ifelse(Metadata != "NOTA/NA", "yes", "no")
-           ) %>% 
-    rename("Treatment\ntype" = "treatment_type")
-  # # "NOTA/NA" to the end
-  # exposures$Metadata = factor(exposures$Metadata, levels = c(unique(exposures$Metadata)[unique(exposures$Metadata) != "NOTA/NA"],
-  #                                                            "NOTA/NA"))
-  # write_tsv(exposures,
-  #           "NMF_exposures.tsv")
+    mutate(is.hit = ifelse(Exposure==max(Exposure), "Top hit", NA))
   
   # DNA repair mark weights in signatures
   weights = nmf_res$w %>% 
@@ -325,7 +527,8 @@ for(optimal_k in seq(2, maxK)){
     rownames_to_column("dna_repair_mark") %>%
     pivot_longer(cols = contains("nmf"), names_to = "signature", values_to = "weight") %>% 
     extract(dna_repair_mark, into = c("dna_repair_mark", "submatrix"), "(.*)_([^_]+$)") %>% 
-    mutate(dna_repair_mark = factor(dna_repair_mark, levels = unique(gsub("_...coeff", "", rownames(nmf_res$w)))),
+    mutate(dna_repair_mark = sub(".L", "", dna_repair_mark),
+           dna_repair_mark = factor(dna_repair_mark, levels = unique(gsub(".L_...coeff", "", rownames(nmf_res$w)))),
            signature = factor(signature, levels = unique(exposures$Signature))) %>% 
     arrange(dna_repair_mark, signature) %>% 
     group_by(dna_repair_mark, signature) %>% 
@@ -335,15 +538,24 @@ for(optimal_k in seq(2, maxK)){
     rename("DNA repair\nactivity" = "dna_repair_mark", 
            "Signature" = "signature") %>% 
     relocate(Signature)
-  # write_tsv(weights,
-  #           "NMF_weights.tsv")
+
+  #####
+  ## calculate "good-model-score": 1 would mean that ALL samples have 100% exposure from the signature(s) that is contributed 100% by a specific DNArep mark whose mechanism/pathway overlaps completely with the sample´s condition (gene-/-, treatment...), and 0 the opposite
+  # actually only considering "ground-truth" sample_condition--DNArep_pathway pairs ('condition_pathway_pairs')
+  good_model_score_table = weights %>% 
+    merge(condition_pathway_pairs) %>% 
+    merge(exposures) %>% 
+    select(Signature, Sample, Weight, Exposure, "DNA repair\nactivity", max_sample_mark_score) %>% 
+    mutate(sample_mark_score = Weight * Exposure * max_sample_mark_score)
+
+  write_tsv(good_model_score_table, "plots/good_model_score_table.tsv")
+  
+  good_model_score = sum(good_model_score_table$sample_mark_score)
+  #####
   
   
   ### plotting
-  
-  #jet.colors = colorRampPalette(c("#00007F", "blue", "#007FFF", "cyan", "#7FFF7F", "yellow", "#FF7F00", "red", "#7F0000"))
-  jet.colors = colorRampPalette(c("gray", "red", "yellow", "green", "cyan", "blue", "magenta", "black"))
-  
+
   exposure_limit = 0.025
   
   # plot only samples with Exposures > exposure_limit%
@@ -358,47 +570,32 @@ for(optimal_k in seq(2, maxK)){
   if(length(signatures_lower_exposure_than_limit) > 0){
     filtered_exposures = filtered_exposures %>% 
       bind_rows(data.frame(signatures_lower_exposure_than_limit) %>% 
-                  `colnames<-`("Signature"))
-  }
+                  `colnames<-`("Signature"))}
   
   ## exposures (only samples with Exposures > exposure_limit%)
+  pos = position_jitter(w = 0.25, h = 0, seed = 1)
   exposures_plot = ggplot(filtered_exposures, 
                           aes(x = Signature,
-                              # convert exposures to %
                               y = Exposure*100,
-                              group = `Treatment\ntype`)) + # Database
+                              shape = dataset)) +
     scale_y_continuous(labels = function(x) sub("0+$", "", x)) +
-    # # all points, no colors
-    # geom_point(aes(shape = Database),
-    #            position = position_dodge(width = 1),
-    #            alpha = 0.5,
-    #            size = 4) +
-    # # colored those with metadata info
-    geom_point(aes(#shape = Database,
-                   fill = `Treatment\ntype`
-                   #alpha = has.Metadata
-                   ),
-               shape = 21,
-               #position = position_dodge(width = 1),
-               size = 4) +
-    #scale_shape_manual(values = c(21,23,24,22,20,25)) + #"\u2716"
-    scale_fill_manual(values = jet.colors(length(unique(exposures$`Treatment\ntype`)))) +
-    #scale_fill_manual(values = c(jet.colors(length(unique(filter(exposures, Exposure > 0.001 & Metadata!="NOTA/NA")$Metadata))), "white")) + # Metadata==NOTA/NA is assigned white
-    #scale_alpha_manual(values = c(0, 0.8), guide = 'none') +
-    guides(shape = guide_legend(override.aes = list(size=6)),
-           fill = guide_legend(override.aes = list(size=6, shape=21))) +
-    # label sample names
-    ggrepel::geom_text_repel(data = filtered_exposures %>%  #filter(is.hit == "hit") %>%
-                                    mutate(Sample = gsub("MSM0.", "samp_", Sample)),
-                             aes(label = Sample),
+    geom_point(aes(fill = info2),
+               size = 4,
+               position = pos) +
+    scale_fill_manual(values = jet.colors(length(unique(exposures$info2)))) +
+    scale_shape_manual(values = c(21, 24)) +
+    guides(fill = guide_legend(override.aes = list(size=6, shape=21)),
+           shape = guide_legend(override.aes = list(size=6))) +
+    ggrepel::geom_text_repel(aes(label = paste(Sample, info1)),
                              size = 4,
-                             #nudge_y = 5,
-                             force = 5,
+                             force = 10,
+                             position = pos,
                              max.overlaps = 1000000,
-                             min.segment.length = 10000) +
+                             min.segment.length = 1) +
     facet_wrap(facets = vars(Signature), scales = "free", nrow = 1) +
     theme_classic() +
     xlab("") +
+    ggtitle(paste0("Model Score = ", round(good_model_score*100, 2), "%")) +
     ylab(paste0("% Exposure (>", exposure_limit*100, "%)")) +
     theme(axis.text.x = element_blank(),
           axis.ticks.x = element_blank(),
@@ -408,6 +605,7 @@ for(optimal_k in seq(2, maxK)){
           strip.background = element_blank(),
           strip.text.x = element_blank(),
           panel.spacing = unit(4, "mm"),
+          legend.title = element_blank(),
           legend.text = element_text(size = 10))
 
   ## weights

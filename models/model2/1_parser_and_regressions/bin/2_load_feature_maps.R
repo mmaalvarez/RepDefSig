@@ -36,12 +36,14 @@ chromosome = ifelse(interactive(),
                     no = paste0("chr", args[3]))
 
 # load collected median_scores from 1st process
-median_scores = lapply(args[-(1:3)], read_tsv) %>%
+median_scores = ifelse(interactive(),
+                       yes = lapply("median_score_OGG1_GOx30_chipseq.tsv", read_tsv),
+                       no = lapply(args[-(1:3)], read_tsv)) %>%
   Reduce(function(x, y) bind_rows(x, y), .)
 
 
 dnarep_marks_list_files = list()
-for (feature in dnarep_marks$name){
+for (feature in dnarep_marks$name){ #[1]){
 
   path_file = filter(dnarep_marks, name == feature)$path
 
@@ -141,7 +143,7 @@ map_features_binarized_temp = map_features %>%
   as_tibble %>% 
   rowwise %>% 
   lazy_dt %>% 
-  mutate_at(vars(dnarep_marks$name),
+  mutate_at(vars(dnarep_marks$name), #[1]),
             function(x){var_name = rlang::as_label(substitute(x))
             ifelse(x <= filter(median_scores, dnarep_mark == var_name) %>% pull(median_score),
                    "low",

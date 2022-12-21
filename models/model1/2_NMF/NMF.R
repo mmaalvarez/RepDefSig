@@ -28,9 +28,9 @@ dir.create("plots")
 
 metadata = read_tsv("/g/strcombio/fsupek_cancer3/malvarez/WGS_tumors/somatic_variation/cell_lines/kucab_2019/processed/sample_treatments.tsv") %>% 
   rename("Sample" = "sample_id") %>% 
-  mutate(treatment_type = gsub("DNA damage response inhibitors",
+  mutate(info2 = gsub("DNA damage response inhibitors",
                                "DNA damage resp. inh.",
-                               treatment_type))
+                               info2))
 
 # load results of regressions and just keep sample_id and coefficients for DNA repair marks
 results_regressions = read_tsv("../1_parser_and_regressions/res/results.tsv") %>%
@@ -312,7 +312,7 @@ for(optimal_k in seq(2, maxK)){
     mutate(is.hit = ifelse(Exposure==max(Exposure), "hit", NA)
            #has.Metadata = ifelse(Metadata != "NOTA/NA", "yes", "no")
            ) %>% 
-    rename("Treatment\ntype" = "treatment_type")
+    rename("Treatment\ntype" = "info2")
   # # "NOTA/NA" to the end
   # exposures$Metadata = factor(exposures$Metadata, levels = c(unique(exposures$Metadata)[unique(exposures$Metadata) != "NOTA/NA"],
   #                                                            "NOTA/NA"))

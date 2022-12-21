@@ -29,13 +29,20 @@ sample = ifelse(interactive(),
                 no = gsub("\\[|\\]", "", args[1])) # after channeling in nextflow, the sample names are contained within brackets, so remove them
 
 path_somatic_variation = ifelse(interactive(),
-                                yes = "/g/strcombio/fsupek_cancer3/malvarez/WGS_tumors/somatic_variation/cell_lines/kucab_2019/processed/data/muts_pass_",
-                                no = args[2])
+                                yes = "/g/strcombio/fsupek_cancer3/malvarez/WGS_tumors/somatic_variation/cell_lines/kucab_2019/processed/data/muts_pass_,/g/strcombio/fsupek_cancer3/malvarez/WGS_tumors/somatic_variation/cell_lines/zou_2021/processed/data/muts_pass_",
+                                no = args[2]) %>% 
+  strsplit(., split=",", fixed = T) %>% 
+  magrittr::extract2(1)
 
 metadata_sample = ifelse(interactive(),
-                         yes = "/g/strcombio/fsupek_cancer3/malvarez/WGS_tumors/somatic_variation/cell_lines/kucab_2019/processed/sample_treatments.tsv",
+                         yes = "/g/strcombio/fsupek_cancer3/malvarez/WGS_tumors/somatic_variation/cell_lines/kucab_2019/processed/sample_treatments.tsv,/g/strcombio/fsupek_cancer3/malvarez/WGS_tumors/somatic_variation/cell_lines/zou_2021/processed/sample_gene_ko.tsv",
                          no = args[3]) %>%
-  read_tsv %>% filter(sample_id == sample)
+  strsplit(., split=",", fixed = T) %>% 
+  magrittr::extract2(1) %>% 
+  # only sample_id and info* columns are selected
+  map_df(~read_tsv(.x) %>% 
+           select(sample_id, starts_with("info"))) %>% 
+  filter(sample_id == sample)
 
 dnarep_marks = ifelse(interactive(),
                       yes = "../input_lists/dnarep_marks.csv",
@@ -50,7 +57,7 @@ chromatin_features = ifelse(interactive(),
 
 # load offset from 3rd process
 offset = ifelse(interactive(),
-                yes = "/g/strcombio/fsupek_data/users/malvarez/projects/RepDefSig/models/model4/1_parser_and_regressions/work/bb/a5719cbc4e57fb00d25a4dc24c6ad8/offset.tsv",
+                yes = "offset.tsv",
                 no = args[6]) %>% 
   read_tsv
 # rename the chromatin environment column (typically 'RepliSeq') to match the "mb_domain" name given to the general mutation table
@@ -59,7 +66,7 @@ colnames(offset)[1] = "mb_domain"
 
 ## load map_features (all chromosomes) from 2nd process
 dfleft = ifelse(interactive(),
-                yes = "../res/map_features.tsv",
+                yes = "map_features_chr21.tsv",
                 no = paste0(args[7], "/res/map_features.tsv")) %>% 
   fread %>% as_tibble %>% 
   rename("chrom" = "seqnames")
@@ -67,17 +74,34 @@ gc()
 
 
 # load collected median_scores from 1st process
-median_scores = lapply(args[-(1:7)], read_tsv) %>% #lapply(Sys.glob("/g/strcombio/fsupek_data/users/malvarez/projects/RepDefSig/models/model4/1_parser_and_regressions/work/5f/e00a01f8e67e5ac4c3ee5ba58f775c/median_score_*.tsv"), read_tsv) %>%
+median_scores = ifelse(interactive(),
+                       yes = lapply("median_score_OGG1_GOx30_chipseq.tsv", read_tsv),
+                       no = lapply(args[-(1:7)], read_tsv)) %>%
   Reduce(function(x, y) bind_rows(x, y), .)
 
 
 ## load sample (somatic mutations)
-dfright = read_csv(paste0(path_somatic_variation, sample, ".csv")) %>%
+
+# find path+sample name that exists
+existing_file = c()
+for(file_exists in paste0(path_somatic_variation, sample, ".csv")){
+  if(file.exists(file_exists)){
+    existing_file = c(existing_file, file_exists)
+  }
+}
+
+# raise error if no samples were found in any path, or if >=2 samples with same name exist in different paths (i.e. diff. datasets)
+if(length(existing_file) != 1){
+  stop(paste0("ERROR! No samples were found in any path OR multiple samples with the same name exist in different paths:", "\n", existing_file))
+}
+
+# load
+dfright = read_csv(existing_file) %>%
   select(chr, start, end, tri) %>% 
   # add +-50bp buffer around each SNV (i.e. 0.1kb windows), to ensure most of them overlap with reptime and DNA mark genomic ranges (I still lose quite a lot)
   mutate(start = start - 50,
          end = end + 50) %>%
-  rename("chrom" = "seqnames") %>%
+  rename("chrom" = "chr") %>%
   mutate(mut_id = paste0("mut_", row_number()))
 gc()
 
@@ -157,13 +181,22 @@ y = tryCatch(glmer.nb(formula = formula,
                                          family = poisson),
              error = function(e) glmer(formula = formula, 
                                        data = sommut_tricount_dnarep_chromatin, 
-                                       family = poisson)) %>%
-  # parse output
-  broom.mixed::tidy() %>%
+                                       family = poisson))
+# track whether NB or Poisson
+nb_or_pois = family(y)[[1]]
+
+# parse output (calc 95%CI same as with stats::confint())
+y = broom.mixed::tidy(y,
+                      conf.int = T, conf.method = "profile", exponentiate = F, effects = "fixed") %>% 
   filter(effect == "fixed" & term != "(Intercept)") %>%
-  select(term, estimate, p.value) %>% 
-  pivot_wider(names_from = term, values_from = c(estimate, p.value)) %>%
-  mutate(sample_id = sample)
+  select(term, estimate, conf.low, conf.high, p.value) %>% 
+  pivot_wider(names_from = term, values_from = c(estimate, conf.low, conf.high, p.value)) %>%
+  mutate(sample_id = sample,
+         glm = ifelse(str_detect(nb_or_pois, "Negative Binomial"),
+                      "Negative Binomial",
+                      ifelse(str_detect(nb_or_pois, "[P,p]oisson"),
+                             "Poisson",
+                             stop(paste0("ERROR! GLM family used was not 'Negative Binomial' nor '[P,p]oisson'; instead, it was '", nb_or_pois, "'")))))
 gc()
 
 ## append features' coefficients and pvalues to metadata_sample
