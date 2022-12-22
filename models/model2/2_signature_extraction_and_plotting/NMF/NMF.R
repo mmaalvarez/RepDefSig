@@ -23,7 +23,6 @@ conflict_prefer("parLapply", "parallel")
 conflict_prefer("parLapplyLB", "parallel")
 conflict_prefer("nmf", "NMF")
 
-dir.create("plots")
 
 jet.colors = colorRampPalette(c("gray", "red", "yellow", "green", "cyan", "blue", "magenta", "black"))
 
@@ -55,7 +54,7 @@ metadata = c("/g/strcombio/fsupek_cancer3/malvarez/WGS_tumors/somatic_variation/
                                "ERROR: Unexpected sample name")))
 
 # load results of regressions and just keep sample_id and coefficients for DNA repair marks
-results_regressions = read_tsv("../1_parser_and_regressions/res/results.tsv") %>% #../1_parser_and_regressions/bin/output/results.tsv") %>% #../../model1/1_parser_and_regressions/res/results.tsv") %>%
+results_regressions = read_tsv("../../1_parser_and_regressions/res/results.tsv") %>% #../../1_parser_and_regressions/bin/output/results.tsv") %>% #../../../model1/1_parser_and_regressions/res/results.tsv") %>%
   # make sure all samples are in the metadata table
   filter(sample_id %in% metadata$Sample) %>% 
   select(sample_id, contains("estimate_"), contains("conf"), glm)
@@ -110,7 +109,7 @@ pca = results_regressions %>%
         axis.text.y = element_text(size = 18),
         legend.text = element_text(size=15),
         legend.title = element_blank())
-ggsave("plots/pca.svg",
+ggsave("pca.svg",
        plot = pca,
        device = "svg",
        width = 20,
@@ -127,7 +126,7 @@ scree = fviz_eig(pca_res,
                  ggtheme = theme_classic(base_size = 20),
                  xlab = "PC",
                  ylab = "% variance")
-ggsave("plots/scree.svg",
+ggsave("scree.svg",
        plot = scree,
        device = "svg",
        width = 10,
@@ -158,13 +157,14 @@ vars = pca_res$var$coord %>%
                            min.segment.length = 0,
                            max.iter = 100000) +
   theme_nothing()
-ggsave("plots/vars.svg",
+ggsave("vars.svg",
        plot = vars,
        device = "svg",
        width = 10,
        height = 5.6,
        dpi = 600,
        bg = "transparent")
+
 
 
 
@@ -407,7 +407,7 @@ heatmap_clustering = sigClusterScores[k <= maxK] %>%
   theme_classic() +
   theme(text = element_text(size = 20)) +
   scale_fill_gradient2(low = "red", mid = "white", high = "blue", midpoint = 0.4)
-ggsave("plots/NMF_heatmap_clustering.jpg",
+ggsave("NMF_heatmap_clustering.jpg",
        plot = heatmap_clustering,
        device = "jpg",
        width = 12.5,
@@ -419,7 +419,8 @@ ggsave("plots/NMF_heatmap_clustering.jpg",
 #################################################################################
 ###### now run the final NMF knowing the optimal k and n features
 
-## split the original results_regressions between pos and neg
+
+##### split the original results_regressions between pos and neg
 
 # a) keep positive coefficients, and convert negative to zero 
 results_regressions_posmatrix = results_regressions %>% 
@@ -446,7 +447,7 @@ coefficient_matrix_RcppML = bind_rows(mutate(results_regressions_posmatrix, subm
   as.matrix
 
 
-## prepare condition_pathway_pairs for "good-model-score"
+##### prepare condition_pathway_pairs for "good-model-score"
 repair_mark_pathways = results_regressions %>% 
   select(contains("estimate")) %>% 
   rename_with(~str_replace(., 'estimate_', '')) %>% 
@@ -466,7 +467,7 @@ repair_mark_pathways = results_regressions %>%
 condition_pathway_pairs = metadata %>% 
   select(info1, info2) %>% 
   distinct %>% 
-  filter(! str_detect(info2, "[C,c]ontrol|[O,o]ther")) %>% 
+  filter(! str_detect(info2, "[C,c]ontrol")) %>% 
   mutate(putative_repair_pathway_involved = ifelse(str_detect(info1, "[G,g]amma"),
                                                    "BER,DSBR",
                                                    ifelse(str_detect(info2, "BER |[A,a]lkylating|[N,n]itrosamine"),
@@ -477,7 +478,7 @@ condition_pathway_pairs = metadata %>%
                                                                  ifelse(str_detect(info2, "MMR "),
                                                                         "MMR",
                                                                         ifelse(str_detect(info2, "DSB|DNA damage resp. inh.|[H,h]elicas|NHEJ|MMEJ|HR ") |
-                                                                                 str_detect(info1, "Etoposide|Bleomycin|Camptothecin|Olaparib|Temozolomide|Melphalan|Cyclophosphamide|Mechlorethamine"),
+                                                                                 str_detect(info1, "PARP|Etoposide|Bleomycin|Camptothecin|Olaparib|Temozolomide|Melphalan|Cyclophosphamide|Mechlorethamine"),
                                                                                "DSBR",
                                                                                NA)))))) %>% 
   separate_rows(putative_repair_pathway_involved, sep = ",") %>% 
@@ -495,12 +496,10 @@ condition_pathway_pairs = condition_pathway_pairs %>%
   rowwise %>% 
   mutate(max_sample_mark_score = 1 / length(unique(condition_pathway_pairs$Sample)) / Sample_possible_marks) %>%
   select(-c(Sample_possible_marks))
-condition_pathway_pairs = condition_pathway_pairs %>% 
-  rowwise %>% 
-  mutate(max_sample_mark_score = max_sample_mark_score / sum(condition_pathway_pairs$max_sample_mark_score))
 
 
-## I actually run all k´s possible
+####
+### Run NMF: I actually run all k´s possible
 for(optimal_k in seq(2, maxK)){
   
   # final NMF (here using RcppML::nmf instead of NMF::nmf as above)
@@ -545,10 +544,14 @@ for(optimal_k in seq(2, maxK)){
   good_model_score_table = weights %>% 
     merge(condition_pathway_pairs) %>% 
     merge(exposures) %>% 
-    select(Signature, Sample, Weight, Exposure, "DNA repair\nactivity", max_sample_mark_score) %>% 
-    mutate(sample_mark_score = Weight * Exposure * max_sample_mark_score)
+    rename("sensical sample-mark pair" = "DNA repair\nactivity",
+           "mark weight" = "Weight",
+           "signature exposure" = "Exposure") %>% 
+    select(Sample, "sensical sample-mark pair", Signature, "mark weight", "signature exposure", max_sample_mark_score) %>% 
+    mutate(sample_mark_score = `mark weight` * `signature exposure` * max_sample_mark_score) %>% 
+    arrange(Sample, `sensical sample-mark pair`, Signature)
 
-  write_tsv(good_model_score_table, "plots/good_model_score_table.tsv")
+  write_tsv(good_model_score_table, "good_model_score_table.tsv")
   
   good_model_score = sum(good_model_score_table$sample_mark_score)
   #####
@@ -641,7 +644,7 @@ for(optimal_k in seq(2, maxK)){
                                       weights_plot,
                                       nrow = 4,
                                       rel_heights = c(0.02, 0.75,-0.05,1))
-  ggsave(paste0("plots/NMF_exposures_weights_plot_k", optimal_k, ".jpg"),
+  ggsave(paste0("NMF_exposures_weights_plot_k", optimal_k, ".jpg"),
          plot = combined_plots,
          device = "jpg",
          width = 21.3,
