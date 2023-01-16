@@ -1,0 +1,3 @@
+1st) load permuted coefficients table, positive/negative split per permutation, 1 NMF per permutation, clustering to know optimal K
+
+2nd) load original coefficients table, positive/negative split, 1 NMF per K, plotting

@@ -1,8 +1,5 @@
 library(tidyverse)
 library(data.table)
-library(FactoMineR)
-library(factoextra)
-library(cowplot)
 library(parallel)
 library(msm) # rtnorm
 library(NMF) # for NMF in first part (bootstrap) to determine optimal k signatures
@@ -24,6 +21,7 @@ conflict_prefer("parLapplyLB", "parallel")
 conflict_prefer("nmf", "NMF")
 
 
+# for plots
 jet.colors = colorRampPalette(c("gray", "red", "yellow", "green", "cyan", "blue", "magenta", "black"))
 
 
@@ -53,118 +51,13 @@ metadata = c("/g/strcombio/fsupek_cancer3/malvarez/WGS_tumors/somatic_variation/
                                paste0(info2, " (treatment)"),
                                "ERROR: Unexpected sample name")))
 
-# load results of regressions and just keep sample_id and coefficients for DNA repair marks
-results_regressions = read_tsv("../../1_parser_and_regressions/res/results.tsv") %>% #../../1_parser_and_regressions/bin/output/results.tsv") %>% #../../../model1/1_parser_and_regressions/res/results.tsv") %>%
-  # make sure all samples are in the metadata table
-  filter(sample_id %in% metadata$Sample) %>% 
-  select(sample_id, contains("estimate_"), contains("conf"), glm)
+# load original coefficients
+coefficients = read_tsv("../2_coefficient_permutations/original_data.tsv")
 
 
-
-#########################################################################
-### PCA to look for biases regarding which samples were regressed with which glm family
-pca_res = results_regressions %>% 
-  select(sample_id, contains("estimate_")) %>% 
-  column_to_rownames("sample_id") %>% 
-  rename_with(~str_replace(., 'estimate_', '')) %>% 
-  rename_with(~str_replace(., '.L', '')) %>%
-  PCA(graph = FALSE)
-
-pca = results_regressions %>%
-  merge(pca_res$ind$coord %>% 
-          data.frame %>% 
-          rownames_to_column("sample_id")) %>% 
-  select(sample_id, contains("Dim"), glm) %>% 
-  rename_with(~str_replace(., 'Dim.', 'PC')) %>% 
-  rename("Sample" = "sample_id") %>% 
-  merge(metadata) %>% 
-  ggplot(aes(x = PC1,
-             y = PC2)) +
-  coord_fixed() +
-  geom_point(aes(fill = info2,
-                 shape = glm)) +
-  stat_ellipse(geom = "polygon",
-               aes(col = glm),
-               alpha = 0,
-               show.legend = T,
-               level = 0.95) +
-  scale_fill_manual(values = jet.colors(length(unique(metadata$info2)))) +
-  scale_color_manual(values = jet.colors(length(unique(metadata$dataset)))) +
-  scale_shape_manual(values = c(21, 24)) +
-  guides(fill = guide_legend(override.aes = list(size=6, shape=21))) +
-  geom_hline(yintercept = 0, lty = 2) +
-  geom_vline(xintercept = 0, lty = 2) +
-  ggrepel::geom_text_repel(aes(label = info1),
-                           force = 5,
-                           segment.size = 0.1,
-                           min.segment.length = 0.001,
-                           max.overlaps = 100000,
-                           max.iter = 100000) +
-  theme_classic() +
-  theme(panel.grid = element_blank(),
-        panel.border = element_rect(fill= "transparent"),
-        axis.title.x = element_text(size = 18),
-        axis.title.y = element_text(size = 18),
-        axis.text.x = element_text(size = 18),
-        axis.text.y = element_text(size = 18),
-        legend.text = element_text(size=15),
-        legend.title = element_blank())
-ggsave("pca.svg",
-       plot = pca,
-       device = "svg",
-       width = 20,
-       height = 15.6,
-       dpi = 600,
-       bg = "white")
-
-scree = fviz_eig(pca_res,
-                 ylim = c(0, round(max(pca_res$eig[,2]))),
-                 geom = c("bar"),
-                 addlabels = FALSE,
-                 ncp = length(rownames(pca_res$eig)),
-                 main = "",
-                 ggtheme = theme_classic(base_size = 20),
-                 xlab = "PC",
-                 ylab = "% variance")
-ggsave("scree.svg",
-       plot = scree,
-       device = "svg",
-       width = 10,
-       height = 5.6,
-       dpi = 600,
-       bg = "transparent")
-
-vars = pca_res$var$coord %>%
-  data.frame() %>%
-  rename_with(~str_replace(., 'Dim.', 'PC')) %>% 
-  rownames_to_column("vars") %>% 
-  ggplot() +
-  geom_segment(aes(x = 0, xend = PC1,
-                   y = 0, yend = PC2),
-               arrow = arrow(length = unit(0.025,
-                                           "npc"),
-                             type = "open"),
-               lwd = 0.5,
-               linetype = "dashed") +
-  ggrepel::geom_text_repel(aes(x = PC1,
-                               y = PC2,
-                               label = vars),
-                           size = 6,
-                           direction = "y",
-                           vjust = 3,
-                           force = 5,
-                           segment.size = 0,
-                           min.segment.length = 0,
-                           max.iter = 100000) +
-  theme_nothing()
-ggsave("vars.svg",
-       plot = vars,
-       device = "svg",
-       width = 10,
-       height = 5.6,
-       dpi = 600,
-       bg = "transparent")
-
+# load resampled coefficients
+totalNumIters = 1000
+coefficient_Resamp = read_tsv(paste0("../2_coefficient_permutations/permuted_coefficients_", totalNumIters, "iters.tsv"))
 
 
 
@@ -173,103 +66,76 @@ ggsave("vars.svg",
 #####################################################################
 
 
-###################################################################
 #### evaluate best combination of n variables and k signatures
 
-coefficient_table = results_regressions %>%
-  select(sample_id, contains("estimate_"), contains("conf")) %>% 
-  rename_all(~str_replace_all(., '.L', '')) %>% 
-  rename_all(~str_replace_all(., 'estimate_', 'estimate ')) %>% 
-  rename_all(~str_replace_all(., 'conf.high_', 'conf.high ')) %>% 
-  rename_all(~str_replace_all(., 'conf.low_', 'conf.low ')) %>% 
-  pivot_longer(cols = -sample_id , names_to = 'stat_mark', values_to = 'value') %>% 
-  separate(stat_mark, into = c("stat", "mark"), sep = " ") %>% 
-  arrange(sample_id, mark) %>% 
-  pivot_wider(names_from = stat) %>% 
-  group_by(sample_id, mark)
-
-## Parameters and initializing of some objects
-totalNumIters = 100
-maxK = length(unique(coefficient_table$mark)) # max number of signatures to consider, it will go from 2 to maxK -- shouldn't be larger than nº of features
-nCPUs = 8
-set.seed(1)
-
-# prepare the resampled NMF input matrices, generated just once and then re-used for any possible # factors/clusters
-nmfHmatAllByFact = list()
-nmfWmatAllByFact = list()
-coefficient_matrix_Resamp = list()
-
-## Generate matrices resampling betas from their CI95% distributions (instead of UPmultinomial)
-resample_from_CI = function(coefficient_table){
-  coefficient_table %>% 
-    summarise(resampled_estimate = rtnorm(n = 1,
-                                          mean = estimate,
-                                          sd = 1, 
-                                          lower = conf.low,
-                                          upper = conf.high))
-}
-
-for (nIter in 1:totalNumIters) {
-  cat(sprintf("Generating bootstrap matrix: nIter %d\n", nIter))
-  
-  # for each sample (row) resample coefficients from CI95% distrs.
-  coefficient_matrix_TempIter = resample_from_CI(coefficient_table) %>% 
-    pivot_wider(names_from = mark, values_from = resampled_estimate) %>% 
-    ungroup
+coefficient_Resamp = coefficient_Resamp %>% 
+  ungroup %>% 
+  pivot_wider(names_from = mark, values_from = resampled_estimate) %>% 
+  unite("sample_id", sample_id, nIter, sep = "__")
     
-  # a) keep positive coefficients, and convert negative to zero 
-  coefficient_matrix_TempIter_posmatrix = coefficient_matrix_TempIter %>% 
+# a) keep positive coefficients, and convert negative to zero 
+coefficient_Resamp_posmatrix = coefficient_Resamp %>% 
+  mutate_if(is.numeric,
+            ~if_else(.<=0, 0, .))
+# b) convert positive coefficients to zero, and convert negative to positive
+coefficient_Resamp_negmatrix = coefficient_Resamp %>% 
     mutate_if(is.numeric,
-              ~if_else(.<=0, 0, .))
-  # b) convert positive coefficients to zero, and convert negative to positive
-  coefficient_matrix_TempIter_negmatrix = coefficient_matrix_TempIter %>% 
-      mutate_if(is.numeric,
-                ~if_else(.>=0, 0, abs(.)))
-  # merge converted coefficients into the NMF input
-  coefficient_matrix_TempIter = merge(coefficient_matrix_TempIter_posmatrix,
-                                      coefficient_matrix_TempIter_negmatrix,
-                                      by = "sample_id",
-                                      suffixes = c("_poscoeff", "_negcoeff")) %>%
-    column_to_rownames("sample_id") %>%
-    data.matrix
-  
-  attr(coefficient_matrix_TempIter, "nIter") = nIter
-  
-  coefficient_matrix_Resamp[[nIter]] = coefficient_matrix_TempIter
-  gc()
-}
-rm(coefficient_matrix_TempIter)
+              ~if_else(.>=0, 0, abs(.)))
+# merge converted coefficients into the NMF input
+coefficient_Resamp = merge(coefficient_Resamp_posmatrix,
+                           coefficient_Resamp_negmatrix,
+                           by = "sample_id",
+                           suffixes = c("_poscoeff", "_negcoeff")) %>%
+  separate(sample_id, into = c("id", "nIter"), sep = "__", remove = F) %>% 
+  mutate(sample_id = gsub("__", "_nIter", sample_id)) %>% 
+  column_to_rownames("sample_id") %>% 
+  select(-id) %>% 
+  split(., f = .$nIter) %>% 
+  map(.f = list(. %>% data.matrix))
+
 
 
 ## Run NMF for each matrix generated in the previous step
 
 # Creates a set of copies of R running in parallel and communicating over sockets.
+## Parameters and initializing of some objects
+set.seed(1)
+maxK = length(unique(coefficients$mark)) # max number of signatures to consider, it will go from 2 to maxK -- shouldn't be larger than nº of features
+nCPUs = 8
 cl = makeCluster(nCPUs)
-clusterExport(cl = cl, list("coefficient_matrix_Resamp")) #, envir=tand)  # This can be slow for large lists
+clusterExport(cl = cl, list("coefficient_Resamp")) #, envir=tand)  # This can be slow for large lists
 clusterEvalQ(cl, library(NMF))
+# prepare the resampled NMF input matrices, generated just once and then re-used for any possible # factors/clusters
+nmfHmatAllByFact = list()
+nmfWmatAllByFact = list()
 
 for (nFact in 2:maxK) {
   cat(sprintf("Running NMF: nFact %d (all iters)\n", nFact))
   nmfOutputByIter = parLapply(cl,
-                              X = coefficient_matrix_Resamp,
+                              X = coefficient_Resamp,
                               fun = function(x, nFact) {
-                                   ## cannot handle all-zero columns (such as MSH6-neg, since all coeff. are +...)
-                                   # store their colnames
-                                   all_zero_columns = colnames(x[, colSums(x) <= 0])
-                                   # remove them from matrix before NMF
-                                   x_nozerocols = x[, colSums(x) > 0]
-                                   # NMF
-                                   nmf_run = nmf(x_nozerocols, rank = nFact, maxIter = 10000, seed = attr(x, "nIter"))
-                                   # re-add the all-zero columns as zeros
-                                   all_zero_columns_matrix = data.frame(matrix(rep(0, len = length(all_zero_columns)), 
-                                                                               ncol = length(all_zero_columns), 
-                                                                               nrow = nrow(nmf_run@fit@H))) %>% 
-                                     `colnames<-`(all_zero_columns) %>% as.matrix
-                                   full_matrix = cbind(nmf_run@fit@H, all_zero_columns_matrix) %>% data.frame %>% 
-                                     # reorder column names to be the same order as before
-                                     select(all_of(colnames(coefficient_matrix_Resamp[[1]]))) %>% as.matrix
-                                   nmf_run@fit@H = full_matrix
-                                   nmf_run},
+                                # store nIter
+                                nIter = x[1,1]
+                                x = x[,-1]
+                                ## cannot handle all-zero columns (such as MSH6-neg, since all coeff. are +...)
+                                # store their colnames
+                                all_zero_columns = data.frame(x) %>% select_if(colSums(.) <= 0) %>% colnames
+                                # remove them from matrix before NMF
+                                x_nozerocols = x[, colSums(x) > 0]
+                                ### NMF
+                                nmf_run = nmf(x_nozerocols, rank = nFact, maxIter = 10000, seed = nIter)
+                                # re-add the all-zero columns as zeros
+                                all_zero_columns_matrix = data.frame(matrix(rep(0, len = length(all_zero_columns)), 
+                                                                            ncol = length(all_zero_columns), 
+                                                                            nrow = nrow(nmf_run@fit@H))) %>% 
+                                  `colnames<-`(all_zero_columns) %>% as.matrix
+                                full_matrix = cbind(nmf_run@fit@H, all_zero_columns_matrix) %>% 
+                                  data.frame %>% 
+                                  # reorder column names to be the same order as before
+                                  select(all_of(colnames(coefficient_Resamp[[1]])[-1])) %>%
+                                  as.matrix
+                                nmf_run@fit@H = full_matrix
+                                nmf_run},
                               nFact)
   idString = sprintf("nFact=%03d", nFact)
   nmfHmatAllByFact[[idString]] = matrix(nrow = 0, ncol = ncol(nmfOutputByIter[[1]])); # columns = original features...
@@ -310,11 +176,11 @@ nmfHmatAllByFact_combined_pos_negcoeff = nmfHmatAllByFact %>%
   map(., ~arrange(.x, id)) %>%
   map(., ~column_to_rownames(.x, 'id')) %>%
   # arrange dna repair mark names (columns)
-  map(.f = list(. %>% select(results_regressions_posmatrix %>% 
-                             select(contains("estimate")) %>% 
-                             names() %>% 
-                             gsub("estimate_", "", .) %>% 
-                             gsub(".L", "", .)))) %>%
+  map(.f = list(. %>% select(coefficient_Resamp[[1]] %>% 
+                               data.frame %>% 
+                               select(contains("poscoeff")) %>% 
+                               names() %>% 
+                               gsub("_poscoeff", "", .)))) %>%
   map(., ~as.matrix(.x))
 
 
@@ -420,26 +286,23 @@ ggsave("NMF_heatmap_clustering.jpg",
 ###### now run the final NMF knowing the optimal k and n features
 
 
-##### split the original results_regressions between pos and neg
+##### split the original coefficients between pos and neg
 
 # a) keep positive coefficients, and convert negative to zero 
-results_regressions_posmatrix = results_regressions %>% 
-  select(sample_id, contains("estimate_")) %>% 
+coefficients_posmatrix = coefficients %>% 
+  select(sample_id, mark, contains("estimate")) %>% 
   mutate_if(is.numeric,
             ~if_else(.<=0, 0, .))
 # b) convert positive coefficients to zero, and convert negative to positive
-results_regressions_negmatrix = results_regressions %>% 
-  select(sample_id, contains("estimate_")) %>% 
+coefficients_negmatrix = coefficients %>% 
+  select(sample_id, mark, contains("estimate")) %>% 
   mutate_if(is.numeric,
             ~if_else(.>=0, 0, abs(.)))
 
 # regenerate the coeff matrix and transpose, for RcppML::nmf()
-coefficient_matrix_RcppML = bind_rows(mutate(results_regressions_posmatrix, submatrix = "poscoeff"),
-                                      mutate(results_regressions_negmatrix, submatrix = "negcoeff")) %>% 
-  pivot_longer(cols = contains("estimate"),
-               names_to = "dna_repair_mark",
-               values_to = "estimate") %>% 
-  unite("dna_repair_mark", dna_repair_mark, submatrix, sep = "_") %>% 
+coefficient_matrix_RcppML = bind_rows(mutate(coefficients_posmatrix, submatrix = "poscoeff"),
+                                      mutate(coefficients_negmatrix, submatrix = "negcoeff")) %>% 
+  unite("dna_repair_mark",mark, submatrix, sep = "_") %>% 
   mutate(dna_repair_mark = gsub("estimate_", "", dna_repair_mark)) %>% 
   # transpose
   pivot_wider(names_from = sample_id, values_from = estimate) %>% 
@@ -448,13 +311,10 @@ coefficient_matrix_RcppML = bind_rows(mutate(results_regressions_posmatrix, subm
 
 
 ##### prepare condition_pathway_pairs for "good-model-score"
-repair_mark_pathways = results_regressions %>% 
-  select(contains("estimate")) %>% 
-  rename_with(~str_replace(., 'estimate_', '')) %>% 
-  rename_with(~str_replace(., '.L', '')) %>% 
-  colnames %>% 
-  data.frame %>% 
-  `colnames<-`("dna_repair_mark") %>% 
+repair_mark_pathways = coefficients %>% 
+  select(sample_id,  mark, estimate) %>% 
+  rename("dna_repair_mark" = "mark",
+         "Sample" = "sample_id") %>% 
   mutate(putative_repair_pathway_involved = ifelse(str_detect(dna_repair_mark, "OGG1_"),
                                                   "BER",
                                                   ifelse(str_detect(dna_repair_mark, "UV_"),
@@ -484,7 +344,7 @@ condition_pathway_pairs = metadata %>%
   separate_rows(putative_repair_pathway_involved, sep = ",") %>% 
   filter(!is.na(putative_repair_pathway_involved)) %>% 
   left_join(metadata) %>% 
-  filter(Sample %in% results_regressions$sample_id) %>% 
+  filter(Sample %in% coefficients$sample_id) %>% 
   arrange(putative_repair_pathway_involved) %>% 
   left_join(repair_mark_pathways) %>% 
   select(Sample, dna_repair_mark) %>% 
@@ -526,8 +386,7 @@ for(optimal_k in seq(2, maxK)){
     rownames_to_column("dna_repair_mark") %>%
     pivot_longer(cols = contains("nmf"), names_to = "signature", values_to = "weight") %>% 
     extract(dna_repair_mark, into = c("dna_repair_mark", "submatrix"), "(.*)_([^_]+$)") %>% 
-    mutate(dna_repair_mark = sub(".L", "", dna_repair_mark),
-           dna_repair_mark = factor(dna_repair_mark, levels = unique(gsub(".L_...coeff", "", rownames(nmf_res$w)))),
+    mutate(dna_repair_mark = factor(dna_repair_mark, levels = unique(gsub("_...coeff", "", rownames(nmf_res$w)))),
            signature = factor(signature, levels = unique(exposures$Signature))) %>% 
     arrange(dna_repair_mark, signature) %>% 
     group_by(dna_repair_mark, signature) %>% 
@@ -551,7 +410,7 @@ for(optimal_k in seq(2, maxK)){
     mutate(sample_mark_score = `mark weight` * `signature exposure` * max_sample_mark_score) %>% 
     arrange(Sample, `sensical sample-mark pair`, Signature)
 
-  write_tsv(good_model_score_table, "good_model_score_table.tsv")
+  write_tsv(good_model_score_table, paste0("K", optimal_k, "_table.tsv"))
   
   good_model_score = sum(good_model_score_table$sample_mark_score)
   #####
@@ -559,7 +418,7 @@ for(optimal_k in seq(2, maxK)){
   
   ### plotting
 
-  exposure_limit = 0.025
+  exposure_limit = 0.015
   
   # plot only samples with Exposures > exposure_limit%
   filtered_exposures = filter(exposures, Exposure > exposure_limit)
@@ -587,11 +446,11 @@ for(optimal_k in seq(2, maxK)){
                position = pos) +
     scale_fill_manual(values = jet.colors(length(unique(exposures$info2)))) +
     scale_shape_manual(values = c(21, 24)) +
-    guides(fill = guide_legend(override.aes = list(size=6, shape=21)),
-           shape = guide_legend(override.aes = list(size=6))) +
+    guides(fill = guide_legend(override.aes = list(size=4, shape=21)),
+           shape = guide_legend(override.aes = list(size=4))) +
     ggrepel::geom_text_repel(aes(label = paste(Sample, info1)),
-                             size = 4,
-                             force = 10,
+                             size = 3,
+                             force = 5,
                              position = pos,
                              max.overlaps = 1000000,
                              min.segment.length = 1) +
@@ -609,7 +468,7 @@ for(optimal_k in seq(2, maxK)){
           strip.text.x = element_blank(),
           panel.spacing = unit(4, "mm"),
           legend.title = element_blank(),
-          legend.text = element_text(size = 10))
+          legend.text = element_text(size = 8))
 
   ## weights
   weights_plot = ggplot(weights %>%
@@ -636,7 +495,7 @@ for(optimal_k in seq(2, maxK)){
           strip.background = element_blank(),
           strip.text.x = element_blank(),
           panel.spacing = unit(2, "mm"),
-          legend.text = element_text(size = 9))
+          legend.text = element_text(size = 10))
   
   combined_plots = cowplot::plot_grid(NULL,
                                       cowplot::plot_grid(exposures_plot, NULL, nrow = 1, rel_widths = c(1, 0.04*(optimal_k/11))),

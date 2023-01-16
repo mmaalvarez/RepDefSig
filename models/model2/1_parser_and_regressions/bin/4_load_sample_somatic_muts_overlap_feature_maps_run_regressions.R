@@ -25,7 +25,7 @@ conflict_prefer("expand", "tidyr")
 args = commandArgs(trailingOnly=TRUE)
 
 sample = ifelse(interactive(),
-                yes = "MSM0.1", #"MSM0.103", #"MSM0.124",
+                yes = "MSM0.128", #"MSM0.103", #"MSM0.124",
                 no = gsub("\\[|\\]", "", args[1])) # after channeling in nextflow, the sample names are contained within brackets, so remove them
 
 path_somatic_variation = ifelse(interactive(),
@@ -57,7 +57,7 @@ chromatin_features = ifelse(interactive(),
 
 # load offset from 3rd process
 offset = ifelse(interactive(),
-                yes = "offset.tsv",
+                yes = "/g/strcombio/fsupek_data/users/malvarez/projects/RepDefSig/models/model2/1_parser_and_regressions/work/6d/8006f697193d072f9c3da5e6fe4fb9/offset.tsv", #"offset.tsv",
                 no = args[6]) %>% 
   read_tsv
 # rename the chromatin environment column (typically 'RepliSeq') to match the "mb_domain" name given to the general mutation table
@@ -66,7 +66,7 @@ colnames(offset)[1] = "mb_domain"
 
 ## load map_features (all chromosomes) from 2nd process
 dfleft = ifelse(interactive(),
-                yes = "map_features_chr21.tsv",
+                yes = "../res/map_features.tsv",
                 no = paste0(args[7], "/res/map_features.tsv")) %>% 
   fread %>% as_tibble %>% 
   rename("chrom" = "seqnames")
@@ -75,8 +75,15 @@ gc()
 
 # load collected median_scores from 1st process
 median_scores = ifelse(interactive(),
-                       yes = lapply("median_score_OGG1_GOx30_chipseq.tsv", read_tsv),
-                       no = lapply(args[-(1:7)], read_tsv)) %>%
+                       yes = lapply(list(c("/g/strcombio/fsupek_data/users/malvarez/projects/RepDefSig/models/model2/1_parser_and_regressions/work/6d/8006f697193d072f9c3da5e6fe4fb9/median_score_OGG1_GOx30_chipseq.tsv",
+                                           "/g/strcombio/fsupek_data/users/malvarez/projects/RepDefSig/models/model2/1_parser_and_regressions/work/6d/8006f697193d072f9c3da5e6fe4fb9/median_score_MSH6_control.tsv",
+                                           "/g/strcombio/fsupek_data/users/malvarez/projects/RepDefSig/models/model2/1_parser_and_regressions/work/6d/8006f697193d072f9c3da5e6fe4fb9/median_score_OGG1_GOx60_chipseq.tsv",
+                                           "/g/strcombio/fsupek_data/users/malvarez/projects/RepDefSig/models/model2/1_parser_and_regressions/work/6d/8006f697193d072f9c3da5e6fe4fb9/median_score_SETD2_control.tsv",
+                                           "/g/strcombio/fsupek_data/users/malvarez/projects/RepDefSig/models/model2/1_parser_and_regressions/work/6d/8006f697193d072f9c3da5e6fe4fb9/median_score_UV_XRseq_NHF1_CPD_1h.tsv",
+                                           "/g/strcombio/fsupek_data/users/malvarez/projects/RepDefSig/models/model2/1_parser_and_regressions/work/6d/8006f697193d072f9c3da5e6fe4fb9/median_score_UV_XRseq_NHF1_PP64_1h_Rep1.tsv",
+                                           "/g/strcombio/fsupek_data/users/malvarez/projects/RepDefSig/models/model2/1_parser_and_regressions/work/6d/8006f697193d072f9c3da5e6fe4fb9/median_score_XRCC4.tsv")), 
+                                    read_tsv),
+                       no = lapply(list(args[-(1:7)]), read_tsv)) %>%
   Reduce(function(x, y) bind_rows(x, y), .)
 
 
@@ -185,12 +192,17 @@ y = tryCatch(glmer.nb(formula = formula,
 # track whether NB or Poisson
 nb_or_pois = family(y)[[1]]
 
-# parse output (calc 95%CI same as with stats::confint())
-y = broom.mixed::tidy(y,
-                      conf.int = T, conf.method = "profile", exponentiate = F, effects = "fixed") %>% 
-  filter(effect == "fixed" & term != "(Intercept)") %>%
-  select(term, estimate, conf.low, conf.high, p.value) %>% 
-  pivot_wider(names_from = term, values_from = c(estimate, conf.low, conf.high, p.value)) %>%
+
+## parse output
+
+y_tidy = broom.mixed::tidy(y,
+                           exponentiate = F, effects = "fixed") %>%
+  # calc CI 95% from std error
+  mutate("conf.low" = estimate - `std.error`*1.96,
+         "conf.high" = estimate + `std.error`*1.96) %>% 
+  select(c(term, estimate, contains("conf"))) %>% 
+  filter(term != "(Intercept)") %>%
+  pivot_wider(names_from = term, values_from = c(estimate, conf.low, conf.high)) %>%
   mutate(sample_id = sample,
          glm = ifelse(str_detect(nb_or_pois, "Negative Binomial"),
                       "Negative Binomial",
@@ -200,7 +212,7 @@ y = broom.mixed::tidy(y,
 gc()
 
 ## append features' coefficients and pvalues to metadata_sample
-results_sample = full_join(metadata_sample, y) %>%
+results_sample = full_join(metadata_sample, y_tidy) %>%
   relocate(sample_id)
 
 write_tsv(results_sample, "results_sample.tsv")

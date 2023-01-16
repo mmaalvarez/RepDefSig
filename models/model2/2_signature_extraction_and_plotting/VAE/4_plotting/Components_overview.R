@@ -84,7 +84,3 @@ heatmap.2(IC_VAE_features_heatmap_matrix,
           mar=c(11,5),
           col = wes_palette("Zissou1", 10, type = "continuous"),
           cexRow = 0.5)
-
-
-
-

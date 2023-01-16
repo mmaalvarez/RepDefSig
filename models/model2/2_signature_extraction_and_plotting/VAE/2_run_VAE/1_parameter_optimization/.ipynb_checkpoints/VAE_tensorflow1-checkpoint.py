@@ -339,4 +339,3 @@ output_df_direc = os.path.join(output_parameter_model_run, "VAE_mse_plus_KL_" + 
 #save output
 output_df.to_csv(output_df_direc, sep='\t', index= False)
 ##############################################################################################################
-

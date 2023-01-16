@@ -1,0 +1,12 @@
+load original and permuted coefficients tables
+scale coefficients to [-1,1] within each table (the original, or each permutation) within each DNA repair mark across all samples
+in permuted table, shuffle all rows
+
+
+sample names must be in the first column
+
+And all other columns must be the numerical features
+
+sample_short	feature_1	feature_2	any_name
+sample1	-4	3.4	4
+any_name	4	3.2	0

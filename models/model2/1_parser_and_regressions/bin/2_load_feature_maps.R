@@ -22,23 +22,30 @@ conflict_prefer("reduce", "IRanges")
 args = commandArgs(trailingOnly=TRUE)
 
 dnarep_marks = ifelse(interactive(),
-                      yes = "../input_lists/dnarep_marks.csv",
+                      yes = "/g/strcombio/fsupek_data/users/malvarez/projects/RepDefSig/models/model2/1_parser_and_regressions/work/ad/22931b2720f1cfd778be28079a1f02/dnarep_marks", #"../input_lists/dnarep_marks.csv",
                       no = args[1]) %>%
   read_csv(comment = "#") 
 
 chromatin_features = ifelse(interactive(),
-                            yes = "../input_lists/chromatin_features.csv",
+                            yes = "/g/strcombio/fsupek_data/users/malvarez/projects/RepDefSig/models/model2/1_parser_and_regressions/work/ad/22931b2720f1cfd778be28079a1f02/chromatin_features", #"../input_lists/chromatin_features.csv",
                             no = args[2]) %>%
   read_csv(comment = "#")
 
 chromosome = ifelse(interactive(),
-                    yes = "chr21",
+                    yes = "chr9",
                     no = paste0("chr", args[3]))
 
 # load collected median_scores from 1st process
 median_scores = ifelse(interactive(),
-                       yes = lapply("median_score_OGG1_GOx30_chipseq.tsv", read_tsv),
-                       no = lapply(args[-(1:3)], read_tsv)) %>%
+                       yes = lapply(list(c("/g/strcombio/fsupek_data/users/malvarez/projects/RepDefSig/models/model2/1_parser_and_regressions/work/ad/22931b2720f1cfd778be28079a1f02/median_score_OGG1_GOx30_chipseq.tsv",
+                                      "/g/strcombio/fsupek_data/users/malvarez/projects/RepDefSig/models/model2/1_parser_and_regressions/work/ad/22931b2720f1cfd778be28079a1f02/median_score_MSH6_control.tsv",
+                                      "/g/strcombio/fsupek_data/users/malvarez/projects/RepDefSig/models/model2/1_parser_and_regressions/work/ad/22931b2720f1cfd778be28079a1f02/median_score_OGG1_GOx60_chipseq.tsv",
+                                      "/g/strcombio/fsupek_data/users/malvarez/projects/RepDefSig/models/model2/1_parser_and_regressions/work/ad/22931b2720f1cfd778be28079a1f02/median_score_SETD2_control.tsv",
+                                      "/g/strcombio/fsupek_data/users/malvarez/projects/RepDefSig/models/model2/1_parser_and_regressions/work/ad/22931b2720f1cfd778be28079a1f02/median_score_UV_XRseq_NHF1_CPD_1h.tsv",
+                                      "/g/strcombio/fsupek_data/users/malvarez/projects/RepDefSig/models/model2/1_parser_and_regressions/work/ad/22931b2720f1cfd778be28079a1f02/median_score_UV_XRseq_NHF1_PP64_1h_Rep1.tsv",
+                                      "/g/strcombio/fsupek_data/users/malvarez/projects/RepDefSig/models/model2/1_parser_and_regressions/work/ad/22931b2720f1cfd778be28079a1f02/median_score_XRCC4.tsv")), 
+                                    read_tsv),
+                       no = lapply(list(args[-(1:3)]), read_tsv)) %>%
   Reduce(function(x, y) bind_rows(x, y), .)
 
 
@@ -143,7 +150,7 @@ map_features_binarized_temp = map_features %>%
   as_tibble %>% 
   rowwise %>% 
   lazy_dt %>% 
-  mutate_at(vars(dnarep_marks$name), #[1]),
+  mutate_at(vars(dnarep_marks$name),
             function(x){var_name = rlang::as_label(substitute(x))
             ifelse(x <= filter(median_scores, dnarep_mark == var_name) %>% pull(median_score),
                    "low",

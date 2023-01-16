@@ -1,6 +1,4 @@
 library(tidyverse)
-library(data.table)
-library(msm) # rtnorm
 library(conflicted)
 conflict_prefer("filter", "dplyr")
 conflict_prefer("rename", "dplyr")
@@ -40,58 +38,11 @@ metadata = c("/g/strcombio/fsupek_cancer3/malvarez/WGS_tumors/somatic_variation/
 results_regressions = read_tsv("../../1_parser_and_regressions/res/results.tsv") %>% #../../1_parser_and_regressions/bin/output/results.tsv") %>% #../../../model1/1_parser_and_regressions/res/results.tsv") %>%
   # make sure all samples are in the metadata table
   filter(sample_id %in% metadata$Sample) %>% 
-  select(sample_id, contains("estimate_"), contains("conf"), glm)
+  select(sample_id, contains("estimate_"), contains("conf"))
 
 
-
-#### Generate matrices resampling coefficients from their CI95% distributions (instead of UPmultinomial)
-
-coefficient_table = results_regressions %>%
-  select(sample_id, contains("estimate_"), contains("conf")) %>% 
-  rename_all(~str_replace_all(., '.L', '')) %>% 
-  rename_all(~str_replace_all(., 'estimate_', 'estimate ')) %>% 
-  rename_all(~str_replace_all(., 'conf.high_', 'conf.high ')) %>% 
-  rename_all(~str_replace_all(., 'conf.low_', 'conf.low ')) %>% 
-  pivot_longer(cols = -sample_id , names_to = 'stat_mark', values_to = 'value') %>% 
-  separate(stat_mark, into = c("stat", "mark"), sep = " ") %>% 
-  arrange(sample_id, mark) %>% 
-  pivot_wider(names_from = stat) %>% 
-  group_by(sample_id, mark)
-
-resample_from_CI = function(coefficient_table){
-    summarise(coefficient_table, resampled_estimate = rtnorm(n = 1,
-                                                             mean = estimate,
-                                                             sd = 1, 
-                                                             lower = conf.low,
-                                                             upper = conf.high))}
-totalNumIters = 10000
-coefficient_matrix_Resamp = list()
-
-for (nIter in 1:totalNumIters) {
-  cat(sprintf("Generating bootstrap matrix: nIter %d\n", nIter))
-  
-  # for each sample (row) resample coefficients from CI95% distrs.
-  coefficient_matrix_TempIter = resample_from_CI(coefficient_table) %>% 
-    pivot_wider(names_from = mark, values_from = resampled_estimate) %>% 
-    ungroup %>% 
-    column_to_rownames("sample_id") %>%
-    data.matrix
-  
-  ## scale the CI-permuted coefficients matrices to [-1, +1] (e.g. python minmax scaler), because final decoding layer uses tanh as activation
-  scale...
-
-  coefficient_matrix_Resamp[[nIter]] = coefficient_matrix_TempIter
-  gc()
-}
-
-
-
-################################
-###### run the autoencoder
-
-
-
-#################################
+results_VAE = read_tsv("../2_run_VAE/...") %>% 
+    
 
 
 
@@ -202,7 +153,7 @@ good_model_score = sum(good_model_score_table$sample_mark_score)
 ###############
 ##### plotting
 
-exposure_limit = 0.025
+exposure_limit = 0.01
 
 jet.colors = colorRampPalette(c("gray", "red", "yellow", "green", "cyan", "blue", "magenta", "black"))
 

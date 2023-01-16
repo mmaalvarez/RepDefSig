@@ -139,13 +139,13 @@ Channel
 
 process load_sample_somatic_muts_overlap_feature_maps_run_regressions {
 
-    time = 2.hour
+    time = 6.hour
     memory = { (params.memory_process4 + 5*(task.attempt-1)).GB }
 
     input:
     val sample from sample_name
     val somatic_data from params.somatic_data
-    path metadata from params.metadata
+    val metadata from params.metadata
     path dnarep_marks from params.dnarep_marks
     path chromatin_features from params.chromatin_features 
     path offset from offset_table // from previous process
