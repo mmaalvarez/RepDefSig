@@ -401,8 +401,8 @@ for(optimal_k in seq(2, maxK)){
   ## calculate "good-model-score": 1 would mean that ALL samples have 100% exposure from the signature(s) that is contributed 100% by a specific DNArep mark whose mechanism/pathway overlaps completely with the sample´s condition (gene-/-, treatment...), and 0 the opposite
   # actually only considering "ground-truth" sample_condition--DNArep_pathway pairs ('condition_pathway_pairs')
   good_model_score_table = weights %>% 
-    merge(condition_pathway_pairs) %>% 
-    merge(exposures) %>% 
+    merge(condition_pathway_pairs, all = T) %>% 
+    merge(exposures, all = T) %>% 
     rename("sensical sample-mark pair" = "DNA repair\nactivity",
            "mark weight" = "Weight",
            "signature exposure" = "Exposure") %>% 
@@ -412,7 +412,7 @@ for(optimal_k in seq(2, maxK)){
 
   write_tsv(good_model_score_table, paste0("K", optimal_k, "_table.tsv"))
   
-  good_model_score = sum(good_model_score_table$sample_mark_score)
+  good_model_score = drop_na(good_model_score_table) %>% pull(sample_mark_score) %>% sum
   #####
   
   

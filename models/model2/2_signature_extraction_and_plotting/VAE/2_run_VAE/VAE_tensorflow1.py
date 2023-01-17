@@ -14,15 +14,11 @@
 #     name: python3
 # ---
 
-# Modified from Mischan Vali Pour's Variational Autoencoder: github.com/lehner-lab/RDGVassociation/tree/main/somatic_component_extraction
+# Modified from Mischan Vali-Pour's Variational Autoencoder
+# ---
+# github.com/lehner-lab/RDGVassociation/tree/main/somatic_component_extraction
 #
-#     adapted/modified from github.com/greenelab/tybalt/blob/master/tybalt_vae.ipynb
-#
-#     adapted/inspired from "Hand-On Maschine Learning with Scikit-Learn, Keras & Tensorflow" by Aurélien Géron December 2020
-#
-# Outputs different performance parameters
-#
-# Runs with tensorflow 1.15.5
+# (in turn adapted/modified/inspired from github.com/greenelab/tybalt/blob/master/tybalt_vae.ipynb and "Hand-On Maschine Learning with Scikit-Learn, Keras & Tensorflow" by Aurélien Géron)
 
 # +
 ####import all important stuff
@@ -38,7 +34,8 @@ import sklearn
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import MinMaxScaler
 
-##keras stuff
+## keras stuff
+# Tensorflow 1.15.5 recommended
 import tensorflow as tf
 from tensorflow import keras
 from tensorflow.keras.layers import Input, Dense, Lambda, Layer, Activation, BatchNormalization
@@ -74,13 +71,16 @@ parser.add_argument('-e', '--epochs',
                     default=200,
                     help='how many times to cycle through the full dataset')
 parser.add_argument('-n', '--num_components',
-                    default=14,
+                    default=6,
                     help='latent space dimensionality (size)')
 parser.add_argument('-t', '--dataset_training', 
-                    default='../../1_coefficient_scaling/VAE_input_1000iters.tsv',
+                    default='../1_coefficient_scaling/VAE_input_1000iters.tsv',
                     help='training dataset, put in full name + direc')
+parser.add_argument('-v', '--validation',
+                    default=0.1,
+                    help='random fraction of the dataset_training to keep aside as a validation set; required only for hyperparameter optimization')
 parser.add_argument('-r', '--dataset_real', 
-                    default='../../1_coefficient_scaling/original_data_scaled.tsv',
+                    default='../1_coefficient_scaling/original_data_scaled.tsv',
                     help='real dataset (i.e. no permutations, just [-1,1]-scaled), put in full name + direc')
 parser.add_argument('-k', '--kappa',
                     default=0.5,
@@ -88,6 +88,10 @@ parser.add_argument('-k', '--kappa',
 parser.add_argument('-d', '--depth',
                     default=1,
                     help='define whether there should be a layer between latent and input/ouput layer, if yes depth=2, else depth=1')
+parser.add_argument('-N', '--nmf',
+                    default='../../NMF/K',
+                    help='path+prefix to NMF signatures tables, automatically specified for K=num_components, file names must have a _table.tsv suffix')
+
 args = parser.parse_args(args=[])
 
 # +
@@ -98,6 +102,7 @@ batch_size = int(args.batch_size)
 epochs = int(args.epochs)
 latent_dim = int(args.num_components)
 dataset_training = args.dataset_training
+validation_set_percent = float(args.validation)
 dataset_real = args.dataset_real
 kappa = float(args.kappa)
 beta = K.variable(0) #KL loss weighting at first epoch
@@ -120,8 +125,8 @@ full_df = pd.read_csv(dataset_training, sep='\t')
 
 ## upload [-1,1]-scaled ORIGINAL data (for final signature extraction)
 real_df = pd.read_csv(dataset_real, sep='\t')
-# store sample names column
-sample_id = real_df.drop(real_df.columns[1:], axis=1)
+# store sample names column, renamed as "Sample"
+sample_id = real_df.drop(real_df.columns[1:], axis=1).rename(columns={'sample_id': 'Sample'})
 
 # convert to numpy array
 train_df_input = np.array(full_df.drop(full_df.columns[0], axis=1))
@@ -180,6 +185,12 @@ class WarmUpCallback(Callback):
     def on_epoch_end(self, epoch, logs={}): #on_epoch_begin, # Behavior on each epoch
         if K.get_value(self.beta) <= 1:
             K.set_value(self.beta, K.get_value(self.beta) + self.kappa)
+
+
+# -
+
+# VAE
+# ---
 
 # +
 #### ENCODER ####
@@ -250,112 +261,124 @@ history = vae.fit(train_df_input,
                   shuffle=True,
                   epochs=epochs,
                   batch_size=batch_size,
-                  # validation_data=(validation_df_input, None),
+                  validation_data=(validation_df_input, None),
                   callbacks=[WarmUpCallback(beta, kappa)])
 
 # evaluate final loss
 training_loss= vae.evaluate(train_df_input)
-# validation_loss= vae.evaluate(validation_df_input)
+validation_loss= vae.evaluate(validation_df_input)
 
 print(training_loss)
-# print(validation_loss)
+print(validation_loss)
+# -
+
+# QC
+# ---
+
 # +
-######################################################################
-## QC
-######################################################################
+############### check Pearson correlation of reconstruction vs input ###############
 
+# encoding 
+encoder = Model(pheno_input, latent_mean_encoded)
 
-############### output "signatures" from real (i.e. not permuted) data #############
+# extract signatures from validation set
+val_encoded = encoder.predict_on_batch(validation_df_input)
 
-# Mischan: "latent_mean_encoded layer of the VAE is equivalent to the exposures from the NMF"
+#### decoder generative model
+decoder_input = Input(shape=(latent_dim, ))  # can generate from any sampled z vector
+_x_decoded_mean = decoder_to_reconstruct(decoder_input)
+decoder = Model(decoder_input, _x_decoded_mean)
+
+# reconstruction
+val_reconstructed = decoder.predict(val_encoded) 
+val_reconstructed = pd.DataFrame(val_reconstructed, columns=train_df.drop(train_df.columns[0], axis=1).columns)
+
+validation_df= pd.DataFrame(validation_df_input, columns=train_df.drop(train_df.columns[0], axis=1).columns)
+
+## check the mean pearson between input and reconstructed, pearson for each sample
+r = [pearsonr(val_reconstructed.iloc[x, :],
+              validation_df.iloc[x, :])[0] for x in range(val_reconstructed.shape[0])]
+r_mean = round(np.mean(np.array(r)), 2)
+r_mean
+
+# +
+############### get VAE "signatures" from real (i.e. not permuted) data #############
+
+## Mischan: "latent_mean_encoded layer of the VAE is equivalent to the exposures from the NMF"
 
 # extract 'signatures' (latent layer means) from original (-1,1 scaled) data
-encoder = Model(pheno_input, latent_mean_encoded)
 encoded_real_df = encoder.predict_on_batch(real_df_input)
 # to pandas, and rename columns ('signatures')
-encoded_real_df = pd.DataFrame(encoded_real_df, columns= range(1, latent_dim+1)).add_prefix('sig')
-# normalize every row (sample) to sum up to 1 for plotting
-encoded_real_df = encoded_real_df.div(encoded_real_df.sum(axis=1), axis=0)
+encoded_real_df = pd.DataFrame(encoded_real_df, columns= range(1, latent_dim+1)).add_prefix('vae')
 # append sample names column
-encoded_real_df = pd.concat([sample_id, encoded_real_df], axis=1)
+encoded_real_df_names = pd.concat([sample_id, encoded_real_df], axis=1)
 
-output_df_direc = os.path.join("signatures__" + str(latent_dim) + "_components_" + 
+# +
+############### check Pearson correlation of VAE "signatures" vs NMF signatures #############
+
+## scale [0,1] every VAE table's row (sample exposures) to compare to NMF scaled exposures
+encoded_real_df_scaled = encoded_real_df.div(encoded_real_df.sum(axis=1), axis=0)
+encoded_real_df_scaled_names = pd.concat([sample_id, encoded_real_df_scaled], axis=1)
+
+## upload NMF signatures file for K=num_components
+# pivot wider and other things to have same format as encoded_real_df
+file_NMF_sig = args.nmf + str(args.num_components) + '_table.tsv'
+NMF_sig_exp = pd.read_csv(file_NMF_sig, sep='\t') \
+    [['Sample','Signature','signature exposure']] \
+    .drop_duplicates() \
+    .pivot(index="Sample", columns="Signature", values="signature exposure") \
+    .reset_index() \
+    .rename_axis(None, axis=1)
+
+# store sample names column, as this is later dropped to scale exposures
+sample_id_nmf = NMF_sig_exp.drop(NMF_sig_exp.columns[1:], axis=1)
+
+# scale [0,1] each row (exposures) to compare to VAE scaled latent_mean_encoded
+# in the process, sample id column has to be dropped
+NMF_sig_exp_scaled = NMF_sig_exp.select_dtypes(exclude='object') \
+    .div(NMF_sig_exp.sum(axis=1, numeric_only = True), axis=0)
+
+# re-append sample names column
+NMF_sig_exp_scaled_names = pd.concat([sample_id, NMF_sig_exp_scaled], axis=1)
+
+## combine NMF signature exposures and VAE latent_mean_encoded
+NMF_VAE_merged = pd.merge(NMF_sig_exp_scaled_names, encoded_real_df_scaled_names, on='Sample')
+
+## do pearson correlation between all numeric columns (i.e. either VAE or NMF sig. exposures)
+pearson_NMF_vs_VAE = NMF_VAE_merged.corr(method='pearson') \
+    [['vae1', 'vae2', 'vae3', 'vae4', 'vae5', 'vae6']] \
+    .head(latent_dim)
+
+# estimate maximum absolute pearson correlation between the VAE mean_latent_encodings and the NMF sigs
+vae1 = max(abs(pearson_NMF_vs_VAE.vae1.iloc[0:latent_dim]))
+vae2 = max(abs(pearson_NMF_vs_VAE.vae2.iloc[0:latent_dim]))
+vae3 = max(abs(pearson_NMF_vs_VAE.vae3.iloc[0:latent_dim]))
+vae4 = max(abs(pearson_NMF_vs_VAE.vae4.iloc[0:latent_dim]))
+vae5 = max(abs(pearson_NMF_vs_VAE.vae5.iloc[0:latent_dim]))
+vae6 = max(abs(pearson_NMF_vs_VAE.vae6.iloc[0:latent_dim]))
+
+# create df from it
+max_pearson_NMF_VAE = pd.DataFrame(np.array([[vae1, vae2, vae3, vae4, vae5, vae6]]),
+                                   columns=['vae1', 'vae2', 'vae3', 'vae4', 'vae5', 'vae6'])
+# get mean value (rounded)
+mean_max_pearson_NMF_VAE = round(max_pearson_NMF_VAE.mean(axis=1), 2).values[0]
+mean_max_pearson_NMF_VAE
+
+# +
+############### save outputs ###############
+
+# VAE signatures
+output_df_direc = os.path.join("VAE_signatures__" + str(latent_dim) + "_components_" + 
                                str(learning_rate) + "_lr_" + str(batch_size) + "_batchsize_" + 
                                str(epochs) + "_epochs_" + str(kappa) + "_kappa_" +
-                               str(1) + "_beta_" + str(hidden_dim) + "_hiddenDim_" + str(depth) + "_depth" + ".tsv")
-#save output
-encoded_real_df.to_csv(output_df_direc, sep='\t', index= False)
+                               str(1) + "_beta_" + str(hidden_dim) + "_hiddenDim_" + str(depth) + "_depth_" + 
+                               str(r_mean) + "_Rmean_reconstr_" + str(mean_max_pearson_NMF_VAE) + "_Rmean_max_NMF" + ".tsv")
+encoded_real_df_names.to_csv(output_df_direc, sep='\t', index= False)
 
-
-
-
-# ############# pearson reconstruction vs input #################################################################
-
-# # encoding again
-# val_encoded = encoder.predict_on_batch(validation_df_input)
-
-# ####decoder generative model
-# decoder_input = Input(shape=(latent_dim, ))  # can generate from any sampled z vector
-# _x_decoded_mean = decoder_to_reconstruct(decoder_input)
-# decoder = Model(decoder_input, _x_decoded_mean)
-
-# # reconstruction
-# val_reconstructed = decoder.predict(val_encoded) 
-# val_reconstructed = pd.DataFrame(val_reconstructed, columns=train_df.drop(['sample_short'], axis=1).columns)
-# print(val_reconstructed)
-
-# validation_df= pd.DataFrame(validation_df_input, columns=train_df.drop(['sample_short'], axis=1).columns)
-
-# ## check the mean pearson between input and reconstructed, pearson for each sample
-# r = [pearsonr(val_reconstructed.iloc[x, :],
-#               validation_df.iloc[x, :])[0] for x in range(val_reconstructed.shape[0])]
-# r_mean = np.mean(np.array(r))
-# print(r_mean)
-
-
-
-# ############### check Correlation with NMF signatures #############
-
-# ##upload file
-# file_NMF_sig = '../../../NMF/good_model_score_table.tsv'
-# NMF_sig = pd.read_csv(file_NMF_sig,sep='\t')
-
-# ##take the latent encoding matrix and this information to do pearson correlations
-# ###### upload latent encodings of the mean
-# encoded_mean_train = encoder.predict_on_batch(train_df_input)
-# encoded_mean_validation = encoder.predict_on_batch(validation_df_input)
-
-# encoded_mean_train_df = pd.DataFrame(encoded_mean_train, columns= range(1, latent_dim+1))
-# encoded_mean_validation_df = pd.DataFrame(encoded_mean_validation, columns= range(1, latent_dim+1))
-
-# #add sample short info
-# train_df_newindex = train_df.copy()
-# validation_df_newindex = validation_df.copy()
-
-# train_df_newindex.index =  range(train_df_newindex.shape[0])
-# encoded_mean_train_df = encoded_mean_train_df.assign(sample_short= train_df_newindex.sample_short)
-
-# validation_df_newindex.index =  range(validation_df_newindex.shape[0])
-# encoded_mean_validation_df = encoded_mean_validation_df.assign(sample_short=validation_df_newindex.sample_short)
-
-# #combine training and test mean encodings
-# encoded_mean_dataset_df = pd.concat([encoded_mean_train_df,encoded_mean_validation_df])
-
-# ##add NMF_sig to encodings
-# encoded_encodings_NMF_sig_ID = pd.merge(encoded_mean_dataset_df, NMF_sig, on='sample_short')
-
-# ###### do pearson correlation between all columns except for sample_short ####
-# pearson_encodings_vs_NMF_sigs = encoded_encodings_NMF_sig_ID.corr(method='pearson')
-
-# ###estimate maximum correlation with the VAE_mean_encodings with each of the NMF_sig
-# sig1 = max(pearson_encodings_vs_NMF_sigs.sig1.iloc[0:latent_dim])
-# sig2 = max(pearson_encodings_vs_NMF_sigs.sig2.iloc[0:latent_dim])
-
-
-# ##create df from it
-# max_correlation_NMF_sigs = pd.DataFrame(np.array([[sig1,sig2]]),
-#                                           columns=['sig1', 'sig2'])
-# max_correlation_NMF_sigs = np.absolute(max_correlation_NMF_sigs) ##take absolute values/no minus
-
-# ##get mean value
-# mean_pearson_NMF_sigs = max_correlation_NMF_sigs.mean(axis=1)
+# pearson correlations (NMF vs VAE signatures) table
+pearson_NMF_vs_VAE_direc = os.path.join("pearson_VAE_NMF__" + str(latent_dim) + "_components_" + 
+                               str(learning_rate) + "_lr_" + str(batch_size) + "_batchsize_" + 
+                               str(epochs) + "_epochs_" + str(kappa) + "_kappa_" +
+                               str(1) + "_beta_" + str(hidden_dim) + "_hiddenDim_" + str(depth) + "_depth_" + 
+                               str(r_mean) + "_Rmean_reconstr_" + str(mean_max_pearson_NMF_VAE) + "_Rmean_max_NMF" + ".tsv")
+pearson_NMF_vs_VAE.to_csv(pearson_NMF_vs_VAE_direc, sep='\t', index= False)
