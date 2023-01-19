@@ -42,8 +42,8 @@ process list_median_scores {
     """
 }
 
-// the same median_scores is passed to 2 diff processes
-median_scores.into{median_scores_for_next_process; median_scores_for_last_process}
+// the same median_scores is passed to 3 diff processes
+median_scores.into{median_scores_for_load_feature_maps; median_scores_for_load_sample_somatic_muts_overlap_feature_maps_run_regressions; median_scores_for_sim_pos_con}
 
 
 
@@ -61,7 +61,7 @@ process load_feature_maps {
     path 'dnarep_marks' from params.dnarep_marks
     path 'chromatin_features' from params.chromatin_features
     val 'chromosome' from chromosomes
-    path median_scores_collected from median_scores_for_next_process.collect() // from previous process
+    path median_scores_collected from median_scores_for_load_feature_maps.collect() // from previous process
 
     output:
     file 'map_features_chr*.tsv' into map_features
@@ -88,7 +88,7 @@ process load_feature_maps {
     """
 }
 
-// rowbind all chromosomes' raw score map features, will be read by final process's R script (hardcoded)
+// rowbind all chromosomes' raw score map features, will be read by 4th process's R script (hardcoded)
 map_features
     .collectFile(name: "res/map_features.tsv", keepHeader: true)
 
@@ -128,6 +128,9 @@ process offset {
     """
 }
 
+// the same offset_table is passed to 2 diff processes
+offset_table.into{offset_table_for_load_sample_somatic_muts_overlap_feature_maps_run_regressions; offset_table_for_sim_pos_con}
+
 
 
 // process in parallel each sample specified in input_lists/sample_ids.tsv
@@ -148,8 +151,8 @@ process load_sample_somatic_muts_overlap_feature_maps_run_regressions {
     val metadata from params.metadata
     path dnarep_marks from params.dnarep_marks
     path chromatin_features from params.chromatin_features 
-    path offset from offset_table // from previous process
-    path median_scores_collected from median_scores_for_last_process.collect() // from 1st process
+    path offset from offset_table_for_load_sample_somatic_muts_overlap_feature_maps_run_regressions // from previous process
+    path median_scores_collected from median_scores_for_load_sample_somatic_muts_overlap_feature_maps_run_regressions.collect() // from 1st process
     // res/map_features.tsv from 2nd process read directly in R 
 
     output:
@@ -176,7 +179,53 @@ process load_sample_somatic_muts_overlap_feature_maps_run_regressions {
     """
 }
 
-// rowbind regression results of all samples
+// rowbind regression results of all (real) samples
 results
     .collectFile(name: 'res/results.tsv', keepHeader: true)
-    .println { "Finished! Combined results for all samples saved in res/results.tsv" }
+    .println { "Regression results for all real samples saved in res/results.tsv\nNow generating simulated positive control samples and running regressions with them..." }
+
+
+
+// simulate positive controls and run regressions for them
+
+process sim_pos_con {
+    
+    publishDir "$PWD/res/", mode: 'move'
+
+    time = 10.hour
+    memory = { (params.memory_process5 + 5*(task.attempt-1)).GB }
+
+    input:
+    val somatic_data from params.somatic_data
+    val metadata from params.metadata
+    path dnarep_marks from params.dnarep_marks
+    path chromatin_features from params.chromatin_features 
+    path offset from offset_table_for_sim_pos_con // from 3rd process
+    val mutation_foldinc from params.mutation_foldinc // fold-values by which increase mutation burden in each DNA repair mark's "high abundance" bins
+    path median_scores_collected from median_scores_for_sim_pos_con.collect() // from 1st process
+
+    output:
+    file 'results_simulated_positive_controls.tsv'
+
+    """
+    #!/usr/bin/env bash
+
+    if command -v conda &> /dev/null
+    then
+        if conda env list | grep "^R " >/dev/null 2>/dev/null
+        then
+            # there is a conda environment named "R"
+            conda activate R
+            Rscript $PWD/bin/5_simulate_pos_controls.R ${somatic_data} ${metadata} ${dnarep_marks} ${chromatin_features} ${offset} $PWD ${mutation_foldinc} ${median_scores_collected}
+        else
+            # no conda environment named "R"
+            Rscript $PWD/bin/5_simulate_pos_controls.R ${somatic_data} ${metadata} ${dnarep_marks} ${chromatin_features} ${offset} $PWD ${mutation_foldinc} ${median_scores_collected}
+        fi
+    else
+        # no conda
+        Rscript $PWD/bin/5_simulate_pos_controls.R ${somatic_data} ${metadata} ${dnarep_marks} ${chromatin_features} ${offset} $PWD ${mutation_foldinc} ${median_scores_collected}
+    fi
+    """
+}
+
+println "Regression results for simulated positive control samples saved in res/results_simulated_positive_controls.tsv\nFinished!"

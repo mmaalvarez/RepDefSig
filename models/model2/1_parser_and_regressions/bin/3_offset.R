@@ -18,10 +18,10 @@ conflict_prefer("expand", "tidyr")
 
 
 # load map_features_binarized (all chromosomes) from 2nd process
-args = commandArgs(trailingOnly=TRUE) #Sys.glob("/g/strcombio/fsupek_data/users/malvarez/projects/RepDefSig/models/model4/1_parser_and_regressions/work/bb/a5719cbc4e57fb00d25a4dc24c6ad8/map_features_binarized_chr*.tsv")
+args = commandArgs(trailingOnly=TRUE)
 
 map_features_binarized = ifelse(interactive(),
-                                yes = lapply("map_features_binarized_chr21.tsv", read_tsv),
+                                yes = lapply("../work/f2/47c7de38af2940966ad1c3e121a657/map_features_binarized_chr20.tsv", read_tsv),
                                 no = lapply(args, read_tsv)) %>%
   Reduce(function(x, y) bind_rows(x, y), .) 
 
