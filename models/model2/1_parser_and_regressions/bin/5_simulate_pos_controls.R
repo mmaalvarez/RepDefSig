@@ -74,12 +74,17 @@ dfleft = ifelse(interactive(),
 gc()
 
 
-## load mutation fold increases to apply on baseline sample
+## load mutation fold increases to apply on baseline sample, in this iteration
 mutation_foldinc = ifelse(interactive(),
-                          yes = "2,4,8,16", # i.e. mut burden at "high" bins multiplied by ×2, ×4...
+                          yes = "2", # i.e. mut burden at "high" bins multiplied by ×2, ×4...
                           no = args[7]) %>% 
-  strsplit(., split=",", fixed = T) %>% 
-  magrittr::extract2(1) %>% as.numeric
+  as.numeric
+
+
+# which dna repair mark has muts increased in this iteration
+dnarep_marks_simulate = ifelse(interactive(),
+                               yes = "OGG1_GOx30_chipseq",
+                               no = args[8])
 
 
 ## load collected median_scores from 1st process
@@ -92,7 +97,7 @@ median_scores = ifelse(interactive(),
                                            "../work/6d/8006f697193d072f9c3da5e6fe4fb9/median_score_UV_XRseq_NHF1_PP64_1h_Rep1.tsv",
                                            "../work/6d/8006f697193d072f9c3da5e6fe4fb9/median_score_XRCC4.tsv")), 
                                     read_tsv),
-                       no = lapply(list(args[-(1:7)]), read_tsv)) %>%
+                       no = lapply(list(args[-(1:8)]), read_tsv)) %>%
   Reduce(function(x, y) bind_rows(x, y), .)
 
 
@@ -207,99 +212,76 @@ baseline_sample = control_samples_table %>%
 simulations_by_mark = list()
 trinuc_96 = c("A(C>A)A", "A(C>A)C", "A(C>A)G", "A(C>A)T", "A(C>G)A", "A(C>G)C", "A(C>G)G", "A(C>G)T", "A(C>T)A", "A(C>T)C", "A(C>T)G", "A(C>T)T", "A(T>A)A", "A(T>A)C", "A(T>A)G", "A(T>A)T", "A(T>C)A", "A(T>C)C", "A(T>C)G", "A(T>C)T", "A(T>G)A", "A(T>G)C", "A(T>G)G", "A(T>G)T", "C(C>A)A", "C(C>A)C", "C(C>A)G", "C(C>A)T", "C(C>G)A", "C(C>G)C", "C(C>G)G", "C(C>G)T", "C(C>T)A", "C(C>T)C", "C(C>T)G", "C(C>T)T", "C(T>A)A", "C(T>A)C", "C(T>A)G", "C(T>A)T", "C(T>C)A", "C(T>C)C", "C(T>C)G", "C(T>C)T", "C(T>G)A", "C(T>G)C", "C(T>G)G", "C(T>G)T", "G(C>A)A", "G(C>A)C", "G(C>A)G", "G(C>A)T", "G(C>G)A", "G(C>G)C", "G(C>G)G", "G(C>G)T", "G(C>T)A", "G(C>T)C", "G(C>T)G", "G(C>T)T", "G(T>A)A", "G(T>A)C", "G(T>A)G", "G(T>A)T", "G(T>C)A", "G(T>C)C", "G(T>C)G", "G(T>C)T", "G(T>G)A", "G(T>G)C", "G(T>G)G", "G(T>G)T", "T(C>A)A", "T(C>A)C", "T(C>A)G", "T(C>A)T", "T(C>G)A", "T(C>G)C", "T(C>G)G", "T(C>G)T", "T(C>T)A", "T(C>T)C", "T(C>T)G", "T(C>T)T", "T(T>A)A", "T(T>A)C", "T(T>A)G", "T(T>A)T", "T(T>C)A", "T(T>C)C", "T(T>C)G", "T(T>C)T", "T(T>G)A", "T(T>G)C", "T(T>G)G", "T(T>G)T")
 
-for(dnarep_mark in dnarep_marks$name){
-  
-    sim_pos_con = baseline_sample %>% 
-      select(tri, mb_domain, dnarep_mark, mean_mutcount) %>% 
-      group_by(tri, mb_domain, !!sym(dnarep_mark)) %>% 
-      # collapse bins
-      summarise(sum_mean_mutcount = sum(mean_mutcount))
-    
-    for(mutfoldinc in mutation_foldinc){
-      
-      sim_pos_con = sim_pos_con %>% 
-        # add mutations in "high"
-        mutate("simulated_mutcount_{mutfoldinc}fold" := ifelse(get(dnarep_mark) == "high",
-                                                               yes = ceiling(sum_mean_mutcount * mutfoldinc),
+sim_pos_con = baseline_sample %>% 
+  select(tri, mb_domain, dnarep_marks_simulate, mean_mutcount) %>% 
+  group_by(tri, mb_domain, !!sym(dnarep_marks_simulate)) %>% 
+  # collapse bins
+  summarise(sum_mean_mutcount = sum(mean_mutcount))
+
+# increase mutations in "high" bins by "mutation_foldinc" times
+sim_pos_con = sim_pos_con %>% 
+  mutate("simulated_mutcount_{mutation_foldinc}fold" := ifelse(get(dnarep_marks_simulate) == "high",
+                                                               yes = ceiling(sum_mean_mutcount * mutation_foldinc),
                                                                no = ceiling(sum_mean_mutcount)))
-    }
-    
-    # parse output
-    sim_pos_con = sim_pos_con %>% 
-      merge(offset, all = T) %>% 
-      select(starts_with("simulated_mutcount"),
-             dnarep_marks$name,
-             mb_domain,
-             tri,
-             log_freq_trinuc32) %>% 
-      ungroup %>% 
-      # dna rep mark levels as ordered factors
-      mutate_at(vars(contains(match = dnarep_marks$name)),
-                ~ factor(., ordered = T, levels = c('low', 'high'))) %>% 
-      # mb_domain and tri as ordered and unordered factors, respectively
-      mutate(mb_domain = factor(mb_domain, ordered = T),
-             tri = factor(tri, ordered = F, levels = trinuc_96)) %>% 
-      arrange(tri, mb_domain) %>% 
-      as_tibble
-    
-    # append to list
-    simulations_by_mark[[dnarep_mark]] = sim_pos_con
-    gc()
-}
+# parse output
+sim_pos_con = sim_pos_con %>% 
+  merge(offset, all = T) %>% 
+  select(starts_with("simulated_mutcount"),
+         dnarep_marks$name,
+         mb_domain,
+         tri,
+         log_freq_trinuc32) %>% 
+  ungroup %>% 
+  # dna rep mark levels as ordered factors
+  mutate_at(vars(contains(match = dnarep_marks$name)),
+            ~ factor(., ordered = T, levels = c('low', 'high'))) %>% 
+  # mb_domain and tri as ordered and unordered factors, respectively
+  mutate(mb_domain = factor(mb_domain, ordered = T),
+         tri = factor(tri, ordered = F, levels = trinuc_96)) %>% 
+  arrange(tri, mb_domain) %>% 
+  as_tibble
+
+gc()
 
 
-### regressions
+### regression
 
-for(dnarep_mark in dnarep_marks$name){
-  
-  for(mutfoldinc in mutation_foldinc){
-    
-    # formula specifies which of the fold values that were used to simulate the mutcounts to use as dependent variable
-    formula = paste0(paste0("simulated_mutcount_", mutfoldinc, "fold ~ "),
-                     paste(dnarep_marks$name, collapse = " + "), " + ",
-                     "(1 | mb_domain) + ",
-                     "(1 | tri) + ",
-                     "offset(log_freq_trinuc32)")
-    
-    # first try a generalized linear mixed-effects model for the negative binomial family
-    y = tryCatch(glmer.nb(formula = formula, 
-                          # specify a dnarep_mark
-                          data = simulations_by_mark[[dnarep_mark]]),
-                 # if there is a failure to converge to theta, run Poisson
-                 warning = function(w) glmer(formula = formula, 
-                                             data = simulations_by_mark[[dnarep_mark]], 
-                                             family = poisson),
-                 error = function(e) glmer(formula = formula, 
-                                           data = simulations_by_mark[[dnarep_mark]], 
-                                           family = poisson))
-    # track whether NB or Poisson
-    nb_or_pois = family(y)[[1]]
-    
-    ## parse output
-    y_tidy = broom.mixed::tidy(y,
-                               exponentiate = F, effects = "fixed") %>%
-      # calc CI 95% from std error
-      mutate("conf.low" = estimate - `std.error`*1.96,
-             "conf.high" = estimate + `std.error`*1.96) %>% 
-      select(c(term, estimate, contains("conf"))) %>% 
-      filter(term != "(Intercept)") %>%
-      pivot_wider(names_from = term, values_from = c(estimate, conf.low, conf.high)) %>%
-      mutate(sample_id = paste0(dnarep_mark, "-high_muts_", mutfoldinc, "-fold"),
-             glm = ifelse(str_detect(nb_or_pois, "Negative Binomial"),
-                          "Negative Binomial",
-                          ifelse(str_detect(nb_or_pois, "[P,p]oisson"),
-                                 "Poisson",
-                                 stop(paste0("ERROR! GLM family used was not 'Negative Binomial' nor '[P,p]oisson'; instead, it was '", nb_or_pois, "'"))))) %>% 
-      relocate(sample_id)
-    
-    # append to final table if this exists, otherwise create it
-    if(exists("results_simulated_positive_controls")){
-      results_simulated_positive_controls = bind_rows(results_simulated_positive_controls, y_tidy)
-    }else{
-      results_simulated_positive_controls = y_tidy
-    }
-    gc()
-  }
-}
+# formula specifies which of the fold values that were used to simulate the mutcounts to use as dependent variable
+formula = paste0(paste0("simulated_mutcount_", mutfoldinc, "fold ~ "),
+                 paste(dnarep_marks$name, collapse = " + "), " + ",
+                 "(1 | mb_domain) + ",
+                 "(1 | tri) + ",
+                 "offset(log_freq_trinuc32)")
 
-write_tsv(results_simulated_positive_controls, "results_simulated_positive_controls.tsv")
+# first try a generalized linear mixed-effects model for the negative binomial family
+y = tryCatch(glmer.nb(formula = formula, 
+                      data = sim_pos_con),
+             # if there is a failure to converge to theta, run Poisson
+             warning = function(w) glmer(formula = formula, 
+                                         data = sim_pos_con, 
+                                         family = poisson),
+             error = function(e) glmer(formula = formula, 
+                                       data = sim_pos_con, 
+                                       family = poisson))
+# track whether NB or Poisson
+nb_or_pois = family(y)[[1]]
+
+## parse output
+y_tidy = broom.mixed::tidy(y,
+                           exponentiate = F, effects = "fixed") %>%
+  # calc CI 95% from std error
+  mutate("conf.low" = estimate - `std.error`*1.96,
+         "conf.high" = estimate + `std.error`*1.96) %>% 
+  select(c(term, estimate, contains("conf"))) %>% 
+  filter(term != "(Intercept)") %>%
+  pivot_wider(names_from = term, values_from = c(estimate, conf.low, conf.high)) %>%
+  mutate(sample_id = paste0(dnarep_marks_simulate, "-high_muts_", mutfoldinc, "-fold"),
+         glm = ifelse(str_detect(nb_or_pois, "Negative Binomial"),
+                      "Negative Binomial",
+                      ifelse(str_detect(nb_or_pois, "[P,p]oisson"),
+                             "Poisson",
+                             stop(paste0("ERROR! GLM family used was not 'Negative Binomial' nor '[P,p]oisson'; instead, it was '", nb_or_pois, "'"))))) %>% 
+  relocate(sample_id)
+
+gc()
+write_tsv(y_tidy, "simulated_positive_control.tsv")

@@ -182,17 +182,19 @@ process load_sample_somatic_muts_overlap_feature_maps_run_regressions {
 // rowbind regression results of all (real) samples
 results
     .collectFile(name: 'res/results.tsv', keepHeader: true)
-    .println { "Regression results for all real samples saved in res/results.tsv\nNow generating simulated positive control samples and running regressions with them..." }
+    .println { "Regression results for all real samples saved in res/results.tsv" }
 
 
 
 // simulate positive controls and run regressions for them
 
+mutation_foldinc = Channel.from( params.mutation_foldinc ) // in parallel, fold-values by which increase mutation burden in each DNA repair mark's "high abundance" bins
+
+dnarep_marks_simulate = Channel.from( EXTRACT_NAMES(params.dnarep_marks) ) // also in parallel, which dna repair mark has mutations increased
+
 process sim_pos_con {
     
-    publishDir "$PWD/res/", mode: 'move'
-
-    time = 10.hour
+    time = 6.hour
     memory = { (params.memory_process5 + 5*(task.attempt-1)).GB }
 
     input:
@@ -201,11 +203,12 @@ process sim_pos_con {
     path dnarep_marks from params.dnarep_marks
     path chromatin_features from params.chromatin_features 
     path offset from offset_table_for_sim_pos_con // from 3rd process
-    val mutation_foldinc from params.mutation_foldinc // fold-values by which increase mutation burden in each DNA repair mark's "high abundance" bins
+    val 'mutation_foldinc' from mutation_foldinc
+    val 'dnarep_marks_simulate' from dnarep_marks_simulate
     path median_scores_collected from median_scores_for_sim_pos_con.collect() // from 1st process
 
     output:
-    file 'results_simulated_positive_controls.tsv'
+    file 'simulated_positive_control.tsv' into sim_pos_con
 
     """
     #!/usr/bin/env bash
@@ -223,9 +226,15 @@ process sim_pos_con {
         fi
     else
         # no conda
-        Rscript $PWD/bin/5_simulate_pos_controls.R ${somatic_data} ${metadata} ${dnarep_marks} ${chromatin_features} ${offset} $PWD ${mutation_foldinc} ${median_scores_collected}
+        Rscript $PWD/bin/5_simulate_pos_controls.R ${somatic_data} ${metadata} ${dnarep_marks} ${chromatin_features} ${offset} $PWD ${mutation_foldinc} ${dnarep_marks_simulate} ${median_scores_collected}
     fi
     """
 }
 
-println "Regression results for simulated positive control samples saved in res/results_simulated_positive_controls.tsv\nFinished!"
+// rowbind regression results of all simulated samples
+sim_pos_con
+    .collectFile(name: 'res/simulated_positive_controls.tsv', keepHeader: true)
+    .println { "Regression results for simulated positive control samples saved in res/simulated_positive_controls.tsv" }
+
+
+println "Finished!"
