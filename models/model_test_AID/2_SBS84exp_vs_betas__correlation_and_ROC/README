@@ -1,0 +1,12 @@
+
+Mann whitney and AUROC:
+	
+	- "Predictor":	sample's SBS84 exposure (calculated with Maia's code in /g/strcombio/fsupek_cancer3/malvarez/WGS_tumors/somatic_variation/TCGA_PCAWG_Hartwig_CPTAC_POG_MMRFCOMMPASS/AID_SHM/)
+
+				vs.
+
+	- "Response":	sample's label, either "non-AID-SHM" or "AID SHM" if:
+
+															estimate's lower CI95% > 0
+																			&
+															estimate > median(estimates of all samples)

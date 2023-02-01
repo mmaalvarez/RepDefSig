@@ -28,6 +28,8 @@ dna repair:
 			BRCA2 (using what I think is the fold enrich between BRCA and input)
 			MSH6 (control + H2O2 damage)
 			SETD2 (control + H2O2 damage)
+		NEW	TP53 (DNA damage induced, K562)
+			TP53 (DNA damage induced, MOLM13)	
 
 			- Excluded some features (marked) since their ranges cover a small part of the genome, so as not to lose ranges in the merged map and therefore not have to increase SNV windows width >100bp in order to not lose SNVs:
 				RepliSeq						3035 Mbp

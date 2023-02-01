@@ -10,10 +10,10 @@ singularity exec singularity_container/tensorflow1.15.5_gpu_jupyter_moredependen
 	--learning_rate 0.0005 \
 	--batch_size 200 \
 	--epochs 200 \
-	--num_components 6 \
-	--dataset_training '../1_coefficient_scaling/VAE_input_1000iters.tsv' \
+	--num_components 9 \
+	--dataset_training 'VAE_input/permuted_*.tsv' \
 	--validation 0.1 \
-	--dataset_real '../1_coefficient_scaling/original_data_scaled.tsv' \
+	--dataset_real 'VAE_input/original_and_simposcon_scaled.tsv' \
 	--kappa 0.5 \
 	--depth 1 \
 	--nmf '../../NMF/K'

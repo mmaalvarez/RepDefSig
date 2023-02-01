@@ -1,3 +1,5 @@
-1st) load permuted coefficients table, positive/negative split per permutation, 1 NMF per permutation, clustering to know optimal K
+1st) load original coefficients table and parse it, run permutations, output permuted coefficients table
 
-2nd) load original coefficients table, positive/negative split, 1 NMF per K, plotting
+2nd) using permuted coefficients table, positive/negative split per permutation, 1 NMF per permutation, clustering to know optimal K
+
+3rd) using original coefficients table, positive/negative split, 1 NMF per K, plotting

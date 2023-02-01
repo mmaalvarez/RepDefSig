@@ -17,6 +17,7 @@ process list_median_scores {
 
     input:
     set name, path from dnarep_mark_paths
+    path 'low_mappability_regions' from params.low_mappability_regions
 
     output:
     file 'median_score_*.tsv' into median_scores
@@ -30,14 +31,14 @@ process list_median_scores {
         then
             # there is a conda environment named "R"
             conda activate R
-            Rscript $PWD/bin/1_list_medians_scores.R ${name} ${path}
+            Rscript $PWD/bin/1_list_medians_scores.R ${name} ${path} ${low_mappability_regions}
         else
             # no conda environment named "R"
-            Rscript $PWD/bin/1_list_medians_scores.R ${name} ${path}
+            Rscript $PWD/bin/1_list_medians_scores.R ${name} ${path} ${low_mappability_regions}
         fi
     else
         # no conda installed
-        Rscript $PWD/bin/1_list_medians_scores.R ${name} ${path}
+        Rscript $PWD/bin/1_list_medians_scores.R ${name} ${path} ${low_mappability_regions}
     fi
     """
 }
@@ -61,6 +62,7 @@ process load_feature_maps {
     path 'dnarep_marks' from params.dnarep_marks
     path 'chromatin_features' from params.chromatin_features
     val 'chromosome' from chromosomes
+    path 'low_mappability_regions' from params.low_mappability_regions
     path median_scores_collected from median_scores_for_load_feature_maps.collect() // from previous process
 
     output:
@@ -76,14 +78,14 @@ process load_feature_maps {
         then
             # there is a conda environment named "R"
             conda activate R
-            Rscript $PWD/bin/2_load_feature_maps.R ${dnarep_marks} ${chromatin_features} ${chromosome} ${median_scores_collected}
+            Rscript $PWD/bin/2_load_feature_maps.R ${dnarep_marks} ${chromatin_features} ${chromosome} ${low_mappability_regions} ${median_scores_collected}
         else
             # no conda environment named "R"
-            Rscript $PWD/bin/2_load_feature_maps.R ${dnarep_marks} ${chromatin_features} ${chromosome} ${median_scores_collected}
+            Rscript $PWD/bin/2_load_feature_maps.R ${dnarep_marks} ${chromatin_features} ${chromosome} ${low_mappability_regions} ${median_scores_collected}
         fi
     else
         # no conda installed
-        Rscript $PWD/bin/2_load_feature_maps.R ${dnarep_marks} ${chromatin_features} ${chromosome} ${median_scores_collected}
+        Rscript $PWD/bin/2_load_feature_maps.R ${dnarep_marks} ${chromatin_features} ${chromosome} ${low_mappability_regions} ${median_scores_collected}
     fi
     """
 }
@@ -102,6 +104,7 @@ process offset {
     memory = { (params.memory_process3 + 5*(task.attempt-1)).GB }
 
     input:
+    path 'low_mappability_regions' from params.low_mappability_regions
     path map_features_binarized_collected from map_features_binarized.collect() // from previous process
 
     output:
@@ -116,14 +119,14 @@ process offset {
         then
             # there is a conda environment named "R"
             conda activate R
-            Rscript $PWD/bin/3_offset.R ${map_features_binarized_collected}
+            Rscript $PWD/bin/3_offset.R ${low_mappability_regions} ${map_features_binarized_collected}
         else
             # no conda environment named "R"
-            Rscript $PWD/bin/3_offset.R ${map_features_binarized_collected}
+            Rscript $PWD/bin/3_offset.R ${low_mappability_regions} ${map_features_binarized_collected}
         fi
     else
         # no conda
-        Rscript $PWD/bin/3_offset.R ${map_features_binarized_collected}
+        Rscript $PWD/bin/3_offset.R ${low_mappability_regions} ${map_features_binarized_collected}
     fi
     """
 }
@@ -152,6 +155,7 @@ process load_sample_somatic_muts_overlap_feature_maps_run_regressions {
     path dnarep_marks from params.dnarep_marks
     path chromatin_features from params.chromatin_features 
     path offset from offset_table_for_load_sample_somatic_muts_overlap_feature_maps_run_regressions // from previous process
+    path 'low_mappability_regions' from params.low_mappability_regions
     path median_scores_collected from median_scores_for_load_sample_somatic_muts_overlap_feature_maps_run_regressions.collect() // from 1st process
     // res/map_features.tsv from 2nd process read directly in R 
 
@@ -167,14 +171,14 @@ process load_sample_somatic_muts_overlap_feature_maps_run_regressions {
         then
             # there is a conda environment named "R"
             conda activate R
-            Rscript $PWD/bin/4_load_sample_somatic_muts_overlap_feature_maps_run_regressions.R ${sample} ${somatic_data} ${metadata} ${dnarep_marks} ${chromatin_features} ${offset} $PWD ${median_scores_collected}
+            Rscript $PWD/bin/4_load_sample_somatic_muts_overlap_feature_maps_run_regressions.R ${sample} ${somatic_data} ${metadata} ${dnarep_marks} ${chromatin_features} ${offset} $PWD ${low_mappability_regions} ${median_scores_collected}
         else
             # no conda environment named "R"
-            Rscript $PWD/bin/4_load_sample_somatic_muts_overlap_feature_maps_run_regressions.R ${sample} ${somatic_data} ${metadata} ${dnarep_marks} ${chromatin_features} ${offset} $PWD ${median_scores_collected}
+            Rscript $PWD/bin/4_load_sample_somatic_muts_overlap_feature_maps_run_regressions.R ${sample} ${somatic_data} ${metadata} ${dnarep_marks} ${chromatin_features} ${offset} $PWD ${low_mappability_regions} ${median_scores_collected}
         fi
     else
         # no conda
-        Rscript $PWD/bin/4_load_sample_somatic_muts_overlap_feature_maps_run_regressions.R ${sample} ${somatic_data} ${metadata} ${dnarep_marks} ${chromatin_features} ${offset} $PWD ${median_scores_collected}
+        Rscript $PWD/bin/4_load_sample_somatic_muts_overlap_feature_maps_run_regressions.R ${sample} ${somatic_data} ${metadata} ${dnarep_marks} ${chromatin_features} ${offset} $PWD ${low_mappability_regions} ${median_scores_collected}
     fi
     """
 }
@@ -203,6 +207,7 @@ process sim_pos_con {
     path dnarep_marks from params.dnarep_marks
     path chromatin_features from params.chromatin_features 
     path offset from offset_table_for_sim_pos_con // from 3rd process
+    path 'low_mappability_regions' from params.low_mappability_regions
     val 'mutation_foldinc' from mutation_foldinc
     val 'dnarep_marks_simulate' from dnarep_marks_simulate
     path median_scores_collected from median_scores_for_sim_pos_con.collect() // from 1st process
@@ -219,14 +224,14 @@ process sim_pos_con {
         then
             # there is a conda environment named "R"
             conda activate R
-            Rscript $PWD/bin/5_simulate_pos_controls.R ${somatic_data} ${metadata} ${dnarep_marks} ${chromatin_features} ${offset} $PWD ${mutation_foldinc} ${median_scores_collected}
+            Rscript $PWD/bin/5_simulate_pos_controls.R ${somatic_data} ${metadata} ${dnarep_marks} ${chromatin_features} ${offset} $PWD ${low_mappability_regions} ${mutation_foldinc} ${median_scores_collected}
         else
             # no conda environment named "R"
-            Rscript $PWD/bin/5_simulate_pos_controls.R ${somatic_data} ${metadata} ${dnarep_marks} ${chromatin_features} ${offset} $PWD ${mutation_foldinc} ${median_scores_collected}
+            Rscript $PWD/bin/5_simulate_pos_controls.R ${somatic_data} ${metadata} ${dnarep_marks} ${chromatin_features} ${offset} $PWD ${low_mappability_regions} ${mutation_foldinc} ${median_scores_collected}
         fi
     else
         # no conda
-        Rscript $PWD/bin/5_simulate_pos_controls.R ${somatic_data} ${metadata} ${dnarep_marks} ${chromatin_features} ${offset} $PWD ${mutation_foldinc} ${dnarep_marks_simulate} ${median_scores_collected}
+        Rscript $PWD/bin/5_simulate_pos_controls.R ${somatic_data} ${metadata} ${dnarep_marks} ${chromatin_features} ${offset} $PWD ${low_mappability_regions} ${mutation_foldinc} ${dnarep_marks_simulate} ${median_scores_collected}
     fi
     """
 }

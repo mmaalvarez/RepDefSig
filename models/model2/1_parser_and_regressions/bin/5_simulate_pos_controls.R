@@ -74,17 +74,20 @@ dfleft = ifelse(interactive(),
 gc()
 
 
+low_mappability_regions = read_tsv(args[7], col_names = F)
+
+
 ## load mutation fold increases to apply on baseline sample, in this iteration
 mutation_foldinc = ifelse(interactive(),
                           yes = "2", # i.e. mut burden at "high" bins multiplied by ×2, ×4...
-                          no = args[7]) %>% 
+                          no = args[8]) %>% 
   as.numeric
 
 
 # which dna repair mark has muts increased in this iteration
 dnarep_marks_simulate = ifelse(interactive(),
                                yes = "OGG1_GOx30_chipseq",
-                               no = args[8])
+                               no = args[9])
 
 
 ## load collected median_scores from 1st process
@@ -95,9 +98,11 @@ median_scores = ifelse(interactive(),
                                            "../work/6d/8006f697193d072f9c3da5e6fe4fb9/median_score_SETD2_control.tsv",
                                            "../work/6d/8006f697193d072f9c3da5e6fe4fb9/median_score_UV_XRseq_NHF1_CPD_1h.tsv",
                                            "../work/6d/8006f697193d072f9c3da5e6fe4fb9/median_score_UV_XRseq_NHF1_PP64_1h_Rep1.tsv",
-                                           "../work/6d/8006f697193d072f9c3da5e6fe4fb9/median_score_XRCC4.tsv")), 
+                                           "../work/6d/8006f697193d072f9c3da5e6fe4fb9/median_score_XRCC4.tsv",
+                                           "../work/XXX/XXX/median_score_TP53_dauno_K562.tsv",
+                                           "../work/XXX/XXX/median_score_TP53_dauno_MOLM13.tsv")), 
                                     read_tsv),
-                       no = lapply(list(args[-(1:8)]), read_tsv)) %>%
+                       no = lapply(list(args[-(1:9)]), read_tsv)) %>%
   Reduce(function(x, y) bind_rows(x, y), .)
 
 
@@ -253,18 +258,9 @@ formula = paste0(paste0("simulated_mutcount_", mutfoldinc, "fold ~ "),
                  "(1 | tri) + ",
                  "offset(log_freq_trinuc32)")
 
-# first try a generalized linear mixed-effects model for the negative binomial family
-y = tryCatch(glmer.nb(formula = formula, 
-                      data = sim_pos_con),
-             # if there is a failure to converge to theta, run Poisson
-             warning = function(w) glmer(formula = formula, 
-                                         data = sim_pos_con, 
-                                         family = poisson),
-             error = function(e) glmer(formula = formula, 
-                                       data = sim_pos_con, 
-                                       family = poisson))
-# track whether NB or Poisson
-nb_or_pois = family(y)[[1]]
+# stick to a generalized linear mixed-effects model for the negative binomial family
+y = suppressWarnings(glmer.nb(formula = formula, 
+                              data = sim_pos_con))
 
 ## parse output
 y_tidy = broom.mixed::tidy(y,
@@ -276,12 +272,11 @@ y_tidy = broom.mixed::tidy(y,
   filter(term != "(Intercept)") %>%
   pivot_wider(names_from = term, values_from = c(estimate, conf.low, conf.high)) %>%
   mutate(sample_id = paste0(dnarep_marks_simulate, "-high_muts_", mutfoldinc, "-fold"),
-         glm = ifelse(str_detect(nb_or_pois, "Negative Binomial"),
-                      "Negative Binomial",
-                      ifelse(str_detect(nb_or_pois, "[P,p]oisson"),
-                             "Poisson",
-                             stop(paste0("ERROR! GLM family used was not 'Negative Binomial' nor '[P,p]oisson'; instead, it was '", nb_or_pois, "'"))))) %>% 
+         info1 = sample_id,
+         info2 = sample_id,
+         # theta value used, either because it was optimal or because it reached 10 iterations
+         theta = lme4:::getNBdisp(y)) %>% 
   relocate(sample_id)
-
 gc()
+
 write_tsv(y_tidy, "simulated_positive_control.tsv")

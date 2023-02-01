@@ -22,6 +22,10 @@ dnarep_mark_path = ifelse(interactive(),
   # remove comment
   gsub("( |\t).*", "", .)
 
+
+low_mappability_regions = read_tsv(args[3], col_names = F)
+
+
 # load file
 dnarep_mark_file = tryCatch(import.bw(dnarep_mark_path),
                             error = function(e) tryCatch(import.bedGraph(dnarep_mark_path),

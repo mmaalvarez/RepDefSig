@@ -73,17 +73,22 @@ dfleft = ifelse(interactive(),
 gc()
 
 
+low_mappability_regions = read_tsv(args[8], col_names = F)
+
+
 # load collected median_scores from 1st process
 median_scores = ifelse(interactive(),
-                       yes = lapply(list(c("/g/strcombio/fsupek_data/users/malvarez/projects/RepDefSig/models/model2/1_parser_and_regressions/work/6d/8006f697193d072f9c3da5e6fe4fb9/median_score_OGG1_GOx30_chipseq.tsv",
-                                           "/g/strcombio/fsupek_data/users/malvarez/projects/RepDefSig/models/model2/1_parser_and_regressions/work/6d/8006f697193d072f9c3da5e6fe4fb9/median_score_MSH6_control.tsv",
-                                           "/g/strcombio/fsupek_data/users/malvarez/projects/RepDefSig/models/model2/1_parser_and_regressions/work/6d/8006f697193d072f9c3da5e6fe4fb9/median_score_OGG1_GOx60_chipseq.tsv",
-                                           "/g/strcombio/fsupek_data/users/malvarez/projects/RepDefSig/models/model2/1_parser_and_regressions/work/6d/8006f697193d072f9c3da5e6fe4fb9/median_score_SETD2_control.tsv",
-                                           "/g/strcombio/fsupek_data/users/malvarez/projects/RepDefSig/models/model2/1_parser_and_regressions/work/6d/8006f697193d072f9c3da5e6fe4fb9/median_score_UV_XRseq_NHF1_CPD_1h.tsv",
-                                           "/g/strcombio/fsupek_data/users/malvarez/projects/RepDefSig/models/model2/1_parser_and_regressions/work/6d/8006f697193d072f9c3da5e6fe4fb9/median_score_UV_XRseq_NHF1_PP64_1h_Rep1.tsv",
-                                           "/g/strcombio/fsupek_data/users/malvarez/projects/RepDefSig/models/model2/1_parser_and_regressions/work/6d/8006f697193d072f9c3da5e6fe4fb9/median_score_XRCC4.tsv")), 
+                       yes = lapply(list(c("../work/6d/8006f697193d072f9c3da5e6fe4fb9/median_score_OGG1_GOx30_chipseq.tsv",
+                                           "../work/6d/8006f697193d072f9c3da5e6fe4fb9/median_score_MSH6_control.tsv",
+                                           "../work/6d/8006f697193d072f9c3da5e6fe4fb9/median_score_OGG1_GOx60_chipseq.tsv",
+                                           "../work/6d/8006f697193d072f9c3da5e6fe4fb9/median_score_SETD2_control.tsv",
+                                           "../work/6d/8006f697193d072f9c3da5e6fe4fb9/median_score_UV_XRseq_NHF1_CPD_1h.tsv",
+                                           "../work/6d/8006f697193d072f9c3da5e6fe4fb9/median_score_UV_XRseq_NHF1_PP64_1h_Rep1.tsv",
+                                           "../work/6d/8006f697193d072f9c3da5e6fe4fb9/median_score_XRCC4.tsv",
+                                           "../work/XXX/XXX/median_score_TP53_dauno_K562.tsv",
+                                           "../work/XXX/XXX/median_score_TP53_dauno_MOLM13.tsv")), 
                                     read_tsv),
-                       no = lapply(list(args[-(1:7)]), read_tsv)) %>%
+                       no = lapply(list(args[-(1:8)]), read_tsv)) %>%
   Reduce(function(x, y) bind_rows(x, y), .)
 
 
@@ -179,24 +184,12 @@ formula = paste0("mutcount ~ ",
                  "(1 | tri) + ",
                  "offset(log_freq_trinuc32)")
 
-# first try a generalized linear mixed-effects model for the negative binomial family
-y = tryCatch(glmer.nb(formula = formula, 
-                      data = sommut_tricount_dnarep_chromatin),
-             # if there is a failure to converge to theta, run Poisson
-             warning = function(w) glmer(formula = formula, 
-                                         data = sommut_tricount_dnarep_chromatin, 
-                                         family = poisson),
-             error = function(e) glmer(formula = formula, 
-                                       data = sommut_tricount_dnarep_chromatin, 
-                                       family = poisson))
-# track whether NB or Poisson
-nb_or_pois = family(y)[[1]]
-
+# stick to a generalized linear mixed-effects model for the negative binomial family
+y = suppressWarnings(glmer.nb(formula = formula, 
+                     data = sommut_tricount_dnarep_chromatin))
 
 ## parse output
-
-y_tidy = broom.mixed::tidy(y,
-                           exponentiate = F, effects = "fixed") %>%
+y_tidy = broom.mixed::tidy(y, exponentiate = F, effects = "fixed") %>%
   # calc CI 95% from std error
   mutate("conf.low" = estimate - `std.error`*1.96,
          "conf.high" = estimate + `std.error`*1.96) %>% 
@@ -204,15 +197,13 @@ y_tidy = broom.mixed::tidy(y,
   filter(term != "(Intercept)") %>%
   pivot_wider(names_from = term, values_from = c(estimate, conf.low, conf.high)) %>%
   mutate(sample_id = sample,
-         glm = ifelse(str_detect(nb_or_pois, "Negative Binomial"),
-                      "Negative Binomial",
-                      ifelse(str_detect(nb_or_pois, "[P,p]oisson"),
-                             "Poisson",
-                             stop(paste0("ERROR! GLM family used was not 'Negative Binomial' nor '[P,p]oisson'; instead, it was '", nb_or_pois, "'")))))
+         # theta value used, either because it was optimal or because it reached 10 iterations
+         theta = lme4:::getNBdisp(y))
 gc()
 
 ## append features' coefficients and pvalues to metadata_sample
 results_sample = full_join(metadata_sample, y_tidy) %>%
-  relocate(sample_id)
+  relocate(sample_id) %>% 
+  relocate(info1, info2, .before = theta)
 
 write_tsv(results_sample, "results_sample.tsv")

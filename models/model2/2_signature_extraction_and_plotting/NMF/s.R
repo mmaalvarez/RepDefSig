@@ -25,7 +25,8 @@ conflict_prefer("nmf", "NMF")
 jet.colors = colorRampPalette(c("gray", "red", "yellow", "green", "cyan", "blue", "magenta", "black"))
 
 
-##### parse input
+
+#### permutations
 
 metadata = c("/g/strcombio/fsupek_cancer3/malvarez/WGS_tumors/somatic_variation/cell_lines/kucab_2019/processed/sample_treatments.tsv",
              "/g/strcombio/fsupek_cancer3/malvarez/WGS_tumors/somatic_variation/cell_lines/zou_2021/processed/sample_gene_ko.tsv") %>% 
@@ -51,13 +52,48 @@ metadata = c("/g/strcombio/fsupek_cancer3/malvarez/WGS_tumors/somatic_variation/
                                paste0(info2, " (treatment)"),
                                "ERROR: Unexpected sample name")))
 
-# load original coefficients
-coefficients = read_tsv("../2_coefficient_permutations/original_data.tsv")
+results_regressions = read_tsv("../../1_parser_and_regressions/res/results.tsv") %>%
+  filter(sample_id %in% metadata$Sample) %>% 
+  select(sample_id, contains("estimate_"), contains("conf"))
+
+coefficient_table = results_regressions %>%
+  select(sample_id, contains("estimate_"), contains("conf")) %>% 
+  rename_all(~str_replace_all(., '.L', '')) %>% 
+  rename_all(~str_replace_all(., 'estimate_', 'estimate ')) %>% 
+  rename_all(~str_replace_all(., 'conf.high_', 'conf.high ')) %>% 
+  rename_all(~str_replace_all(., 'conf.low_', 'conf.low ')) %>% 
+  pivot_longer(cols = -sample_id , names_to = 'stat_mark', values_to = 'value') %>% 
+  separate(stat_mark, into = c("stat", "mark"), sep = " ") %>% 
+  arrange(sample_id, mark) %>% 
+  pivot_wider(names_from = stat) %>% 
+  group_by(sample_id, mark)
 
 
-# load resampled coefficients
+## Parameters and initializing of some objects
 totalNumIters = 1000
-coefficient_Resamp = read_tsv(paste0("../2_coefficient_permutations/permuted_coefficients_", totalNumIters, "iters.tsv"))
+coefficient_Resamp = list()
+set.seed(1)
+
+## Generate matrices resampling betas from their CI95% distributions (instead of UPmultinomial)
+resample_from_CI = function(coefficient_table){
+  summarise(coefficient_table, resampled_estimate = rtnorm(n = 1,
+                                                           mean = estimate,
+                                                           sd = 1, 
+                                                           lower = conf.low,
+                                                           upper = conf.high))}
+for (nIter in 1:totalNumIters) {
+  print(paste0("nIter ", nIter))
+  # for each sample (row) resample coefficients from CI95% distrs.
+  coefficient_Resamp[[nIter]] = resample_from_CI(coefficient_table) %>% 
+    mutate("nIter" = nIter)
+  gc()
+}
+
+# bind all permutated tables as an input for the NMF
+coefficient_Resamp = bind_rows(coefficient_Resamp)
+
+write_tsv(coefficient_Resamp, paste0("permuted_coefficients_", totalNumIters, "iters.tsv"))
+
 
 
 
@@ -100,7 +136,7 @@ coefficient_Resamp = merge(coefficient_Resamp_posmatrix,
 # Creates a set of copies of R running in parallel and communicating over sockets.
 ## Parameters and initializing of some objects
 set.seed(1)
-maxK = length(unique(coefficients$mark)) # max number of signatures to consider, it will go from 2 to maxK -- shouldn't be larger than nº of features
+maxK = length(unique(coefficient_table$mark)) # max number of signatures to consider, it will go from 2 to maxK -- shouldn't be larger than nº of features
 nCPUs = 8
 cl = makeCluster(nCPUs)
 clusterExport(cl = cl, list("coefficient_Resamp")) #, envir=tand)  # This can be slow for large lists
@@ -289,12 +325,12 @@ ggsave("NMF_heatmap_clustering.jpg",
 ##### split the original coefficients between pos and neg
 
 # a) keep positive coefficients, and convert negative to zero 
-coefficients_posmatrix = coefficients %>% 
+coefficients_posmatrix = coefficient_table %>% 
   select(sample_id, mark, contains("estimate")) %>% 
   mutate_if(is.numeric,
             ~if_else(.<=0, 0, .))
 # b) convert positive coefficients to zero, and convert negative to positive
-coefficients_negmatrix = coefficients %>% 
+coefficients_negmatrix = coefficient_table %>% 
   select(sample_id, mark, contains("estimate")) %>% 
   mutate_if(is.numeric,
             ~if_else(.>=0, 0, abs(.)))
@@ -311,7 +347,7 @@ coefficient_matrix_RcppML = bind_rows(mutate(coefficients_posmatrix, submatrix =
 
 
 ##### prepare condition_pathway_pairs for "good-model-score"
-repair_mark_pathways = coefficients %>% 
+repair_mark_pathways = coefficient_table %>% 
   select(sample_id,  mark, estimate) %>% 
   rename("dna_repair_mark" = "mark",
          "Sample" = "sample_id") %>% 
@@ -323,7 +359,7 @@ repair_mark_pathways = coefficients %>%
                                                                 "MMR",
                                                                 ifelse(str_detect(dna_repair_mark, "XRCC4"),
                                                                        "DSBR",
-                                                                       NA)))))
+                                                                       #ADD TP53)))))
 condition_pathway_pairs = metadata %>% 
   select(info1, info2) %>% 
   distinct %>% 
@@ -340,11 +376,11 @@ condition_pathway_pairs = metadata %>%
                                                                         ifelse(str_detect(info2, "DSB|DNA damage resp. inh.|[H,h]elicas|NHEJ|MMEJ|HR ") |
                                                                                  str_detect(info1, "PARP|Etoposide|Bleomycin|Camptothecin|Olaparib|Temozolomide|Melphalan|Cyclophosphamide|Mechlorethamine"),
                                                                                "DSBR",
-                                                                               NA)))))) %>% 
+                                                                               #ADD TP53)))))) %>% 
   separate_rows(putative_repair_pathway_involved, sep = ",") %>% 
   filter(!is.na(putative_repair_pathway_involved)) %>% 
   left_join(metadata) %>% 
-  filter(Sample %in% coefficients$sample_id) %>% 
+  filter(Sample %in% coefficient_table$sample_id) %>% 
   arrange(putative_repair_pathway_involved) %>% 
   left_join(repair_mark_pathways) %>% 
   select(Sample, dna_repair_mark) %>% 

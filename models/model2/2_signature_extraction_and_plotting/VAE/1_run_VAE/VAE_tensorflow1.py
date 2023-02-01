@@ -69,18 +69,18 @@ parser.add_argument('-b', '--batch_size',
                     help='number of samples to include in each learning batch')
 parser.add_argument('-e', '--epochs',         
                     default=200,
-                    help='how many times to cycle through the full dataset')
+                    help='how many times to cycle -- NEW: every epoch a new set of training/validating samples is generated')
 parser.add_argument('-n', '--num_components',
                     default=6,
                     help='latent space dimensionality (size)')
 parser.add_argument('-t', '--dataset_training', 
-                    default='../1_coefficient_scaling/VAE_input_1000iters.tsv',
-                    help='training dataset, put in full name + direc')
+                    default='permuted_samples_training/*.tsv',
+                    help='training+validation samples (output from generate_..._validating.R)')
 parser.add_argument('-v', '--validation',
                     default=0.1,
                     help='random fraction of the dataset_training to keep aside as a validation set; required only for hyperparameter optimization')
 parser.add_argument('-r', '--dataset_real', 
-                    default='../1_coefficient_scaling/original_data_scaled.tsv',
+                    default='../1_original_and_simposcon_samples_coefficient_scaling/original_and_simposcon_scaled.tsv',
                     help='real dataset (i.e. no permutations, just [-1,1]-scaled), put in full name + direc')
 parser.add_argument('-k', '--kappa',
                     default=0.5,

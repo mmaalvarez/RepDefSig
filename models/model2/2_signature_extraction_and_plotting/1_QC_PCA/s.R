@@ -46,11 +46,11 @@ metadata = c("/g/strcombio/fsupek_cancer3/malvarez/WGS_tumors/somatic_variation/
 results_regressions = read_tsv("../../1_parser_and_regressions/res/results.tsv") %>%
   # make sure all samples are in the metadata table
   filter(sample_id %in% metadata$Sample) %>% 
-  select(sample_id, contains("estimate_"), glm)
+  select(sample_id, contains("estimate_"), theta)
 
 
 
-### PCA to look for biases regarding which samples were regressed with which glm family
+### PCA to look for biases regarding which samples were regressed with which theta values (either converged, or not)
 pca_res = results_regressions %>% 
   select(sample_id, contains("estimate_")) %>% 
   column_to_rownames("sample_id") %>% 
@@ -62,7 +62,7 @@ pca = results_regressions %>%
   merge(pca_res$ind$coord %>% 
           data.frame %>% 
           rownames_to_column("sample_id")) %>% 
-  select(sample_id, contains("Dim"), glm) %>% 
+  select(sample_id, contains("Dim"), theta) %>% 
   rename_with(~str_replace(., 'Dim.', 'PC')) %>% 
   rename("Sample" = "sample_id") %>% 
   merge(metadata) %>% 
@@ -70,15 +70,15 @@ pca = results_regressions %>%
              y = PC2)) +
   coord_fixed() +
   geom_point(aes(fill = info2,
-                 shape = glm)) +
+                 shape = as.character(floor(theta)))) +
   stat_ellipse(geom = "polygon",
-               aes(col = glm),
+               aes(col = as.character(floor(theta))),
                alpha = 0,
                show.legend = T,
                level = 0.95) +
   scale_fill_manual(values = jet.colors(length(unique(metadata$info2)))) +
-  scale_color_manual(values = jet.colors(length(unique(metadata$dataset)))) +
-  scale_shape_manual(values = c(21, 24)) +
+  #scale_shape_manual(values = c(21, 24)) +
+  scale_color_manual(values = jet.colors(length(unique(floor(results_regressions$theta))))) +
   guides(fill = guide_legend(override.aes = list(size=6, shape=21))) +
   geom_hline(yintercept = 0, lty = 2) +
   geom_vline(xintercept = 0, lty = 2) +
