@@ -30,6 +30,9 @@ map_features_binarized = ifelse(interactive(),
 gc()
 
 
+### AFTER TRINUC MATCHING, NO STRATIFICATION BASED ON 32 SBS types
+
+
 ### calculate offset (log(n trinuc of each of the 32 types (e.g. ACT) that exist in each RT-dnarepmarks combination, and could therefore be any A(C>D)T SNV))
 
 offset = map_features_binarized %>%

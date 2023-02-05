@@ -1,0 +1,11 @@
+have to add the 
+
+	- TP53 binding data
+
+	- masking of low mappability regions for 
+
+		- dna repair mark medians
+		- dna repair mark coordinates
+		- SNV coordinates
+
+	- trinuc matching

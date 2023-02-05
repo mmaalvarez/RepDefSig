@@ -186,6 +186,10 @@ sequences = getSeq(BSgenome.Hsapiens.UCSC.hg19,
                    names = makeGRangesFromDataFrame(map_features_binarized, 
                                                     keep.extra.columns = T))
 
+
+### TRINUC MATCHING
+
+
 # get frequency of each trinucleotide per sequence, moving 1 nucleotide downstream each time
 trinuc32_freq = trinucleotideFrequency(sequences) %>%
   as_tibble %>%
