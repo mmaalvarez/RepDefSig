@@ -8,4 +8,6 @@ have to add the
 		- dna repair mark coordinates
 		- SNV coordinates
 
-	- trinuc matching
+	- trinuc matching, non-mixed model
+
+	- windows around repmarks, not SNVs

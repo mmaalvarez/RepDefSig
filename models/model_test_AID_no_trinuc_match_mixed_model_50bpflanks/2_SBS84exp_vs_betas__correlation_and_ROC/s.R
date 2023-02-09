@@ -140,8 +140,14 @@ ggsave("MW_plot_SBS84_raw_exposures_log10_no2outliers.jpg",
        dpi = 600,
        bg = "white")
 
+
 ##################################
 ### Exploratory plot
+
+## NEW add controls (i.e. non-lymphoid tumor SBS84 exposures)
+
+nonlymphoid = read_tsv("/g/strcombio/fsupek_cancer3/malvarez/WGS_tumors/somatic_variation/TCGA_PCAWG_Hartwig_CPTAC_POG_MMRFCOMMPASS/AID_SHM/5_non_lymphoid_controls/3_extract_SBS84__sort_AID_vs_nonAID_samples/nonlymphoid_samples_SBS84_exposure_K3.tsv")
+
 exploratory_plot = ggplot(SBS84exposures_regcoeffs %>% 
          pivot_longer(cols = starts_with("SNVs_"), names_to = "Genomic region", values_to = "SNVs") %>% 
          mutate(`Genomic region` = gsub("SNVs_", "", `Genomic region`),
