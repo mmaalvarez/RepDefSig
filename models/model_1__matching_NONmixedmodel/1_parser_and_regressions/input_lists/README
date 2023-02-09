@@ -1,0 +1,81 @@
+
+all coordinates hg19
+
+
+mutation samples: 
+
+	- Nik-Zainal iPSCs (induced pluripotential stem cells)
+
+		- /g/strcombio/fsupek_cancer3/malvarez/WGS_tumors/somatic_variation/cell_lines/kucab_2019/processed/data/
+	
+		- Only including 84 samples: controls + treated samples whose mutation burden is above the mean mut burden of the controls (done in kucab_2019/processed/list_treated_samples_mutburden_above_mean_of_controls.R)
+	
+	- Zou CRISPR KO cell line (mutagenesis induced by loss of a given DNA repair gene)
+
+		- /g/strcombio/fsupek_cancer3/malvarez/WGS_tumors/somatic_variation/cell_lines/zou_2021/processed/data/
+
+		- Only including 63 samples: controls + "   "	"   "   "   "
+
+
+dna repair: 
+			OGG1 (3 samples with increasing damage time)
+			BPDE (2 reps)
+			UV	tech		cell lines		damage type		reps		time
+				------------------------------------------------------------
+				XR-seq		NHF1,CSB,XPC	CPD or 6-4PP	~2 each		1h
+				tXR-seq		GM12878			CPD				 2			4h
+			XRCC4 (I think this is not fold enrichment, but no input was available)
+			BRCA2 (using what I think is the fold enrich between BRCA and input)
+			MSH6 (control + H2O2 damage)
+			SETD2 (control + H2O2 damage)
+		NEW	TP53 (DNA damage induced, K562)
+			TP53 (DNA damage induced, MOLM13)	
+
+			- Excluded some features (marked) since their ranges cover a small part of the genome, so as not to lose ranges in the merged map and therefore not have to increase SNV windows width >100bp in order to not lose SNVs:
+				RepliSeq						3035 Mbp
+				OGG1_GOx15_chipseq				1873 Mbp	×
+				OGG1_GOx30_chipseq				2685 Mbp
+				OGG1_GOx60_chipseq				2268 Mbp
+				BPDE_tXRseq_rep1_2strands		 297 Mbp	×
+				BPDE_tXRseq_rep2_2strands		 450 Mbp	×
+				UV_XRseq_NHF1_CPD_1h			3095 Mbp
+				UV_XRseq_NHF1_CPD_1h_Rep1		3095 Mbp
+				UV_XRseq_NHF1_CPD_1h_Rep2		3095 Mbp
+				UV_XRseq_NHF1_PP64_1h_Rep1		3095 Mbp
+				UV_XRseq_NHF1_PP64_1h_Rep2		3095 Mbp
+				UV_XRseq_CSB_CPD_1h				3095 Mbp
+				UV_XRseq_CSB_PP64_1h_Rep1		3095 Mbp
+				UV_XRseq_CSB_PP64_1h_Rep2		3095 Mbp
+				UV_XRseq_XPC_CPD_1h				3095 Mbp
+				UV_XRseq_XPC_PP64_1h			3095 Mbp
+				UV_tXRseq_GM12878_CPD_4h_Rep1	 468 Mbp	×
+				UV_tXRseq_GM12878_CPD_4h_Rep2	 384 Mbp	×
+				XRCC4							3035 Mbp
+				BRCA2						       7 Mbp	×
+				MSH6_control					3094 Mbp
+				MSH6_H2O2						3094 Mbp
+				SETD2_control					3094 Mbp
+				SETD2_H2O2						3094 Mbp
+
+				- Excluded for the above reason:
+					OGG1_GOx15_chipseq	/g/strcombio/fsupek_cancer3/malvarez/chromatin_info/DNA_repair__protein_binding/DNA_repair/BER/OGG1/chipseq/bed_hg19/hg19_GSM2357434_CP-Sample_Flag-OGG1-GOX-15-1.tdf.bed	#							BER/OGG1/GOx15				chip-seq	.bed
+					BPDE_tXRseq_rep1_2strands	/g/strcombio/fsupek_cancer3/malvarez/chromatin_info/DNA_repair__protein_binding/DNA_repair/NER/tobacco_smoking/tXR_seq/GSM2575211_GM1HB2sorted_scaled_both_strands.tsv	#						NER/tobacco_smoking/rep1	tXR-seq		.tsv
+					BPDE_tXRseq_rep2_2strands	/g/strcombio/fsupek_cancer3/malvarez/chromatin_info/DNA_repair__protein_binding/DNA_repair/NER/tobacco_smoking/tXR_seq/GSM2575212_GM1HB3sorted_scaled_both_strands.tsv	#						NER/tobacco_smoking/rep2	tXR-seq		.tsv
+					UV_tXRseq_GM12878_CPD_4h_Rep1	/g/strcombio/fsupek_cancer3/malvarez/chromatin_info/DNA_repair__protein_binding/DNA_repair/NER/UV/tXR_seq/merged_strands/GSM2575209_CPD4HE1sorted_scaled_merged_strands.bw	#				NER/UV/						tXR-seq		.bw
+					UV_tXRseq_GM12878_CPD_4h_Rep2	/g/strcombio/fsupek_cancer3/malvarez/chromatin_info/DNA_repair__protein_binding/DNA_repair/NER/UV/tXR_seq/merged_strands/GSM2575210_CPD4HE2sorted_scaled_merged_strands.bw	#				NER/UV/						tXR-seq		.bw
+					BRCA2	/g/strcombio/fsupek_cancer3/malvarez/chromatin_info/DNA_repair__protein_binding/DNA_repair/DSBR/HDR/BRCA2/GSE133450_BRCA2.anno.tsv	#																				DSBR/BRCA2					chip-seq	.tsv
+				
+				- Excluded for having just 7 dna rep marks for the moment
+					UV_XRseq_NHF1_CPD_1h_Rep1	/g/strcombio/fsupek_cancer3/malvarez/chromatin_info/DNA_repair__protein_binding/DNA_repair/NER/UV/XR_seq/merged_strands/GSM1985845_NHF1CPD_1h_Rep1_merged_strands.bw	#						NER/UV/						XR-seq		.bw
+					UV_XRseq_NHF1_CPD_1h_Rep2	/g/strcombio/fsupek_cancer3/malvarez/chromatin_info/DNA_repair__protein_binding/DNA_repair/NER/UV/XR_seq/merged_strands/GSM1985846_NHF1CPD_1h_Rep2_merged_strands.bw	#						NER/UV/						XR-seq		.bw
+					UV_XRseq_NHF1_PP64_1h_Rep2	/g/strcombio/fsupek_cancer3/malvarez/chromatin_info/DNA_repair__protein_binding/DNA_repair/NER/UV/XR_seq/merged_strands/GSM1985862_PP641h_Rep2_merged_merged_strands.bw	#						NER/UV/						XR-seq		.bw
+					UV_XRseq_CSB_CPD_1h	/g/strcombio/fsupek_cancer3/malvarez/chromatin_info/DNA_repair__protein_binding/DNA_repair/NER/UV/XR_seq/merged_strands/GSE67941_CSBCPD_Merged_merged_strands.bw	#									NER/UV/						XR-seq		.bw
+					UV_XRseq_CSB_PP64_1h_Rep1	/g/strcombio/fsupek_cancer3/malvarez/chromatin_info/DNA_repair__protein_binding/DNA_repair/NER/UV/XR_seq/merged_strands/GSM1985869_CSB64_Rep1_merged_strands.bw	#								NER/UV/						XR-seq		.bw
+					UV_XRseq_CSB_PP64_1h_Rep2	/g/strcombio/fsupek_cancer3/malvarez/chromatin_info/DNA_repair__protein_binding/DNA_repair/NER/UV/XR_seq/merged_strands/GSM1985870_CSB64_Rep2_merged_strands.bw	#								NER/UV/						XR-seq		.bw
+					UV_XRseq_XPC_CPD_1h	/g/strcombio/fsupek_cancer3/malvarez/chromatin_info/DNA_repair__protein_binding/DNA_repair/NER/UV/XR_seq/merged_strands/GSE67941_XPCCPD_Merged_merged_strands.bw	#									NER/UV/						XR-seq		.bw
+					UV_XRseq_XPC_PP64_1h	/g/strcombio/fsupek_cancer3/malvarez/chromatin_info/DNA_repair__protein_binding/DNA_repair/NER/UV/XR_seq/merged_strands/GSE67941_XPC64_Merged_merged_strands.bw	#									NER/UV/						XR-seq		.bw
+					MSH6_H2O2	/g/strcombio/fsupek_cancer3/malvarez/chromatin_info/DNA_repair__protein_binding/DNA_repair/MMR/MSH6_SETD2_H3K36me3_guominli/2_fold_enrichment_vs_input/bedgraphs_fold_enrich/SRR13314133_sorted_FE.bdg	#		MMR/MSH6/H2O2				chip-seq	.bedGraph
+					SETD2_H2O2	/g/strcombio/fsupek_cancer3/malvarez/chromatin_info/DNA_repair__protein_binding/DNA_repair/MMR/MSH6_SETD2_H3K36me3_guominli/2_fold_enrichment_vs_input/bedgraphs_fold_enrich/SRR13314135_sorted_FE.bdg	#		MMR/SETD2/H2O2				chip-seq	.bedGraph
+
+
+chromatin feature: replication time pooled8
