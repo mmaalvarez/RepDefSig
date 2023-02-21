@@ -1,0 +1,11 @@
+kucab + zou + lymphoid samples (PCAWG+TCGA+Hartwig)
+	
+	include nonlymphoid for AID exploratory plot (mutburden~SBS84)
+
+
+AIDtargets-vs-bgGenome(50bp flanks) + the 7 dna rep variables + tp53
+
+	windows around repmarks, not around SNVs
+
+
+DID NOT mask low mappability regions for SNV coordinates: too many SNVs lost

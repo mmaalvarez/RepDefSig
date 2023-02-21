@@ -1,9 +1,0 @@
-1st function "intron_sampling" takes dataframes as (two rows * 32 nts type columns) and returns the frequencies to keep for each trinuc
-
-		- first row (exons nuclts numbers)
-		- second row (introns nuclts numbers)
-
-	  - I modified it to "bin_sampling" so instead of exons/introns, it takes n rows, one per genomic bin (e.g. RT6-OGG1low-UVhigh-...)
-
-
-2nd function ... randomly subsample the introns' trinucs based on the frequencies obtained in the previous step
