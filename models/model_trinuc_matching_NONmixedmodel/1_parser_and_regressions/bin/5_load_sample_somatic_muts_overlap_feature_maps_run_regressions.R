@@ -72,13 +72,13 @@ dfleft = ifelse(interactive(),
 gc()
 
 
-## DONT filter out low mappability regions
-# low_mappability_regions = ifelse(interactive(),
-#                                  yes = "/g/strcombio/fsupek_home/mmunteanu/reference/CRG75_nochr.bed",
-#                                  no = args[8]) %>% 
-#   import.bed() %>% data.frame %>%
-#   mutate(seqnames = gsub("^", "chr", seqnames)) %>% 
-#   rename("chrom" = "seqnames")
+## NEW keep SNVs in good mappability regions
+good_mappability_regions = ifelse(interactive(),
+                                 yes = "/g/strcombio/fsupek_home/mmunteanu/reference/CRG75_nochr.bed",
+                                 no = args[8]) %>%
+  import.bed() %>% data.frame %>%
+  mutate(seqnames = gsub("^", "chr", seqnames)) %>%
+  rename("chrom" = "seqnames")
 
 
 # load collected median_scores from 1st process
@@ -123,8 +123,11 @@ gc()
 
 ### map chromatin features
 merged = dfright %>%
-  # DONT remove low mappability regions from SNVs table
-  #bed_subtract(low_mappability_regions) %>% 
+  # NEW keep SNVs in good mappability regions
+  bed_intersect(good_mappability_regions, suffix = c("_dfright", "_crg75")) %>% 
+  select(c("chrom", contains("_dfright"))) %>% 
+  rename_all(~str_replace_all(., "_dfleft|_dfright", "")) %>%
+  # now intersect with dfleft
   bed_intersect(dfleft, suffix = c("_dfright", "_dfleft")) %>%
   select(-c(contains("chrom"), contains("start_"), contains("end_"), contains("width_"), contains("strand_"), contains("overlap"))) %>%
   # remove the "dleft" and "dright" parts of the column names
@@ -151,7 +154,7 @@ merged = dfright %>%
 gc()
 
 if(nrow(merged) == 0){
-  stop("ERROR - Empty 'merged' table: probably 'low_mappability_regions' has removed all SNVs for this sample! Exiting...\n")
+  stop("ERROR - Empty 'merged' table: probably 'good_mappability_regions' has removed all SNVs for this sample! Exiting...\n")
 }
 
 

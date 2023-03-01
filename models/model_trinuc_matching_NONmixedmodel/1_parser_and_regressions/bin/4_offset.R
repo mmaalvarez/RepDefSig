@@ -66,5 +66,4 @@ offset = merge(offset, empty_offset, all = T) %>%
   replace_na(list(log_freq_trinuc32 = 0)) %>% 
   rename("mb_domain" = "RepliSeq")
 
-# for 9 binary dna marks × 6 RT bins × 32 NC|TN trinuc32 == XXX --> × 3 AGT(C) == XXX rows
 write_tsv(offset, "offset.tsv")

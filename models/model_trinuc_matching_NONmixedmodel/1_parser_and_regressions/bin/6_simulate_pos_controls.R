@@ -74,13 +74,13 @@ dfleft = ifelse(interactive(),
 gc()
 
 
-## DONT filter out low mappability regions
-# low_mappability_regions = ifelse(interactive(),
-#                                  yes = "/g/strcombio/fsupek_home/mmunteanu/reference/CRG75_nochr.bed",
-#                                  no = args[7]) %>% 
-#   import.bed() %>% data.frame %>%
-#   mutate(seqnames = gsub("^", "chr", seqnames)) %>% 
-#   rename("chrom" = "seqnames")
+## NEW keep SNVs in good mappability regions
+good_mappability_regions = ifelse(interactive(),
+                                 yes = "/g/strcombio/fsupek_home/mmunteanu/reference/CRG75_nochr.bed",
+                                 no = args[7]) %>%
+  import.bed() %>% data.frame %>%
+  mutate(seqnames = gsub("^", "chr", seqnames)) %>%
+  rename("chrom" = "seqnames")
 
 
 ## load mutation fold increases to apply on baseline sample, in this iteration
@@ -140,8 +140,11 @@ for(control_sample in control_samples){
 
   ## map chromatin features
   merged = dfright %>%
-    # DONT remove low mappability regions from SNVs table
-    #bed_subtract(low_mappability_regions) %>% 
+    # NEW keep SNVs in good mappability regions
+    bed_intersect(good_mappability_regions, suffix = c("_dfright", "_crg75")) %>% 
+    select(c("chrom", contains("_dfright"))) %>% 
+    rename_all(~str_replace_all(., "_dfleft|_dfright", "")) %>%
+    # now intersect with dfleft
     bed_intersect(dfleft, suffix = c("_dfright", "_dfleft")) %>%
     select(-c(contains("chrom"), contains("start_"), contains("end_"), contains("width_"), contains("strand_"), contains("overlap"))) %>%
     # remove the "dleft" and "dright" parts of the column names
@@ -167,7 +170,7 @@ for(control_sample in control_samples){
                 factor(., ordered = T, levels = c('low', 'high'))}) # baseline --> lower mut rates
     
   if(nrow(merged) == 0){
-    stop("ERROR - Empty 'merged' table: probably 'low_mappability_regions' has removed all SNVs for this CONTROL sample! Exiting...\n")
+    stop("ERROR - Empty 'merged' table: probably 'good_mappability_regions' has removed all SNVs for this CONTROL sample! Exiting...\n")
   }
   
   merged = merged %>% 
@@ -234,11 +237,14 @@ sim_pos_con = baseline_sample %>%
   # collapse bins
   summarise(sum_mean_mutcount = sum(mean_mutcount))
 
-# increase mutations in bins that are i) "high" repair mark abundance -to approach the baseline-, or ii) "bgGenome" -to approach the mut rates in AID targets-, by "mutation_foldinc" times
+# increase mutations in bins that are i) "high" repair mark abundance -to approach the baseline-, or ii) "AID_target" -to simulate an AID-SHM sample-, by "mutfoldinc" times
 sim_pos_con = sim_pos_con %>% 
-  mutate("simulated_mutcount_{mutation_foldinc}fold" := ifelse(get(dnarep_marks_simulate) %in% c("high", "bgGenome"),
-                                                               yes = ceiling(sum_mean_mutcount * mutation_foldinc),
+  mutate("simulated_mutcount_{mutfoldinc}fold" := ifelse(get(dnarep_mark_simulate) %in% c("high", "AID_target"),
+                                                               yes = ceiling(sum_mean_mutcount * mutfoldinc),
                                                                no = ceiling(sum_mean_mutcount)))
+altered_level = ifelse(dnarep_mark_simulate == "AID_regions",
+                       yes = "targets",
+                       no = "high_activity")
 # parse output
 sim_pos_con = sim_pos_con %>% 
   merge(offset, all = T) %>% 
@@ -275,7 +281,7 @@ y_tidy = broom::tidy(y) %>%
          "conf.high" = estimate + `std.error`*1.96) %>% 
   select(c(term, estimate, contains("conf"))) %>% 
   pivot_wider(names_from = term, values_from = c(estimate, conf.low, conf.high)) %>%
-  mutate(sample_id = paste0(dnarep_marks_simulate, "-high_muts_", mutfoldinc, "-fold"),
+  mutate(sample_id = paste0(dnarep_mark_simulate, "-", altered_level, "__muts_", mutfoldinc, "-fold"),
          info1 = sample_id,
          info2 = sample_id,
          # theta value used, either because it was optimal or because it reached 10 iterations

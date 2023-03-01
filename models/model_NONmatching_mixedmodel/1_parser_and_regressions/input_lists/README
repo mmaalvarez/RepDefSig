@@ -1,11 +1,10 @@
-
 all coordinates hg19
 
 lymphoid TCGA Hartwig PCAWG samples from
 	/g/strcombio/fsupek_cancer3/malvarez/WGS_tumors/somatic_variation/TCGA_PCAWG_Hartwig_CPTAC_POG_MMRFCOMMPASS/AID_SHM/4_sample_list_for_repdefsig
 
 dna repair: 
-			OGG1 (3 samples with increasing damage time)
+			OGG1 (3 samples with increasing damage time)	--> assuming gaps as score = 0
 			BPDE (2 reps)
 			UV	tech		cell lines		damage type		reps		time
 				------------------------------------------------------------
@@ -15,8 +14,8 @@ dna repair:
 			BRCA2 (using what I think is the fold enrich between BRCA and input)
 			MSH6 (control + H2O2 damage)
 			SETD2 (control + H2O2 damage)
-		NEW	TP53 (DNA damage induced, K562)
-			TP53 (DNA damage induced, MOLM13)	
+		NEW	TP53 (DNA damage induced, K562)					--> assuming gaps as score = 0
+			TP53 (DNA damage induced, MOLM13)					"	"		"		"
 			
 			AID
 

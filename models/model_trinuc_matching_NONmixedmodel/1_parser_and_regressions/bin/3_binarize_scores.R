@@ -13,8 +13,13 @@ conflict_prefer("map", "purrr")
 conflict_prefer("extract", "magrittr")
 conflict_prefer("reduce", "IRanges")
 
-source("utils.R")
 
+# load utils.R (functions) -- only used here if trinucleotide matching
+if(interactive()){
+  source("trinucmatch_testing.R")
+} else {
+  source(args[1])
+}
 
 # from command parameters
 args = commandArgs(trailingOnly=TRUE)
@@ -30,29 +35,30 @@ if(interactive()){ ## if interactive, load all chromosomes obtained in the non-t
   
   # retrieve them
   map_features_other_model = c(
-    Sys.glob(paste0("../../../model_NONmatching_mixedmodel/1_parser_and_regressions/work/49/233987*/map_features_chr1.tsv")),
-    Sys.glob(paste0("../../../model_NONmatching_mixedmodel/1_parser_and_regressions/work/XX/XXXXXX*/map_features_chr2.tsv")),
-    Sys.glob(paste0("../../../model_NONmatching_mixedmodel/1_parser_and_regressions/work/5e/bbc6a1*/map_features_chr3.tsv")),
-    Sys.glob(paste0("../../../model_NONmatching_mixedmodel/1_parser_and_regressions/work/e8/4d2d99*/map_features_chr4.tsv")),
-    Sys.glob(paste0("../../../model_NONmatching_mixedmodel/1_parser_and_regressions/work/c5/fd2c96*/map_features_chr5.tsv")),
-    Sys.glob(paste0("../../../model_NONmatching_mixedmodel/1_parser_and_regressions/work/94/020b13*/map_features_chr6.tsv")),
-    Sys.glob(paste0("../../../model_NONmatching_mixedmodel/1_parser_and_regressions/work/6b/2ed152*/map_features_chr7.tsv")),
-    Sys.glob(paste0("../../../model_NONmatching_mixedmodel/1_parser_and_regressions/work/59/fe923d*/map_features_chr8.tsv")),
-    Sys.glob(paste0("../../../model_NONmatching_mixedmodel/1_parser_and_regressions/work/68/d6db3a*/map_features_chr9.tsv")),
-    Sys.glob(paste0("../../../model_NONmatching_mixedmodel/1_parser_and_regressions/work/32/9d8e47*/map_features_chr10.tsv")),
-    Sys.glob(paste0("../../../model_NONmatching_mixedmodel/1_parser_and_regressions/work/79/2b50fa*/map_features_chr11.tsv")),
-    Sys.glob(paste0("../../../model_NONmatching_mixedmodel/1_parser_and_regressions/work/3b/e6d88c*/map_features_chr12.tsv")),
-    Sys.glob(paste0("../../../model_NONmatching_mixedmodel/1_parser_and_regressions/work/64/4d94e0*/map_features_chr13.tsv")),
-    Sys.glob(paste0("../../../model_NONmatching_mixedmodel/1_parser_and_regressions/work/14/5cc46e*/map_features_chr14.tsv")),
-    Sys.glob(paste0("../../../model_NONmatching_mixedmodel/1_parser_and_regressions/work/62/059595*/map_features_chr15.tsv")),
-    Sys.glob(paste0("../../../model_NONmatching_mixedmodel/1_parser_and_regressions/work/86/ee942b*/map_features_chr16.tsv")),
-    Sys.glob(paste0("../../../model_NONmatching_mixedmodel/1_parser_and_regressions/work/71/b15936*/map_features_chr17.tsv")),
-    Sys.glob(paste0("../../../model_NONmatching_mixedmodel/1_parser_and_regressions/work/ed/3f9d95*/map_features_chr18.tsv")),
-    Sys.glob(paste0("../../../model_NONmatching_mixedmodel/1_parser_and_regressions/work/cc/77e514*/map_features_chr19.tsv")),
-    Sys.glob(paste0("../../../model_NONmatching_mixedmodel/1_parser_and_regressions/work/74/97f44f*/map_features_chr20.tsv")),
-    Sys.glob(paste0("../../../model_NONmatching_mixedmodel/1_parser_and_regressions/work/af/0b3000*/map_features_chr21.tsv")),
-    Sys.glob(paste0("../../../model_NONmatching_mixedmodel/1_parser_and_regressions/work/2c/003c95*/map_features_chr22.tsv")),
-    Sys.glob(paste0("../../../model_NONmatching_mixedmodel/1_parser_and_regressions/work/ab/095afc*/map_features_chrX.tsv")))
+    # Sys.glob(paste0("../../../model_NONmatching_mixedmodel/1_parser_and_regressions/work/[[:alnum:]][[:alnum:]]/*/map_features_chr1.tsv")),
+    # Sys.glob(paste0("../../../model_NONmatching_mixedmodel/1_parser_and_regressions/work/[[:alnum:]][[:alnum:]]/*/map_features_chr2.tsv")),
+    # Sys.glob(paste0("../../../model_NONmatching_mixedmodel/1_parser_and_regressions/work/[[:alnum:]][[:alnum:]]/*/map_features_chr3.tsv")),
+    # Sys.glob(paste0("../../../model_NONmatching_mixedmodel/1_parser_and_regressions/work/[[:alnum:]][[:alnum:]]/*/map_features_chr4.tsv")),
+    # Sys.glob(paste0("../../../model_NONmatching_mixedmodel/1_parser_and_regressions/work/[[:alnum:]][[:alnum:]]/*/map_features_chr5.tsv")),
+    # Sys.glob(paste0("../../../model_NONmatching_mixedmodel/1_parser_and_regressions/work/[[:alnum:]][[:alnum:]]/*/map_features_chr6.tsv")),
+    # Sys.glob(paste0("../../../model_NONmatching_mixedmodel/1_parser_and_regressions/work/[[:alnum:]][[:alnum:]]/*/map_features_chr7.tsv")),
+    # Sys.glob(paste0("../../../model_NONmatching_mixedmodel/1_parser_and_regressions/work/[[:alnum:]][[:alnum:]]/*/map_features_chr8.tsv")),
+    # Sys.glob(paste0("../../../model_NONmatching_mixedmodel/1_parser_and_regressions/work/[[:alnum:]][[:alnum:]]/*/map_features_chr9.tsv")),
+    # Sys.glob(paste0("../../../model_NONmatching_mixedmodel/1_parser_and_regressions/work/[[:alnum:]][[:alnum:]]/*/map_features_chr10.tsv")),
+    # Sys.glob(paste0("../../../model_NONmatching_mixedmodel/1_parser_and_regressions/work/[[:alnum:]][[:alnum:]]/*/map_features_chr11.tsv")),
+    # Sys.glob(paste0("../../../model_NONmatching_mixedmodel/1_parser_and_regressions/work/[[:alnum:]][[:alnum:]]/*/map_features_chr12.tsv")),
+    # Sys.glob(paste0("../../../model_NONmatching_mixedmodel/1_parser_and_regressions/work/[[:alnum:]][[:alnum:]]/*/map_features_chr13.tsv")),
+    # Sys.glob(paste0("../../../model_NONmatching_mixedmodel/1_parser_and_regressions/work/[[:alnum:]][[:alnum:]]/*/map_features_chr14.tsv")),
+    # Sys.glob(paste0("../../../model_NONmatching_mixedmodel/1_parser_and_regressions/work/[[:alnum:]][[:alnum:]]/*/map_features_chr15.tsv")),
+    # Sys.glob(paste0("../../../model_NONmatching_mixedmodel/1_parser_and_regressions/work/[[:alnum:]][[:alnum:]]/*/map_features_chr16.tsv")),
+    # Sys.glob(paste0("../../../model_NONmatching_mixedmodel/1_parser_and_regressions/work/[[:alnum:]][[:alnum:]]/*/map_features_chr17.tsv")),
+    # Sys.glob(paste0("../../../model_NONmatching_mixedmodel/1_parser_and_regressions/work/[[:alnum:]][[:alnum:]]/*/map_features_chr18.tsv")),
+    # Sys.glob(paste0("../../../model_NONmatching_mixedmodel/1_parser_and_regressions/work/[[:alnum:]][[:alnum:]]/*/map_features_chr19.tsv")),
+    # Sys.glob(paste0("../../../model_NONmatching_mixedmodel/1_parser_and_regressions/work/[[:alnum:]][[:alnum:]]/*/map_features_chr20.tsv")),
+    Sys.glob(paste0("../../../model_NONmatching_mixedmodel/1_parser_and_regressions/work/[[:alnum:]][[:alnum:]]/*/map_features_chr21.tsv"))#,
+    # Sys.glob(paste0("../../../model_NONmatching_mixedmodel/1_parser_and_regressions/work/[[:alnum:]][[:alnum:]]/*/map_features_chr22.tsv")),
+    # Sys.glob(paste0("../../../model_NONmatching_mixedmodel/1_parser_and_regressions/work/[[:alnum:]][[:alnum:]]/*/map_features_chrX.tsv"))
+    )
   
   # load them
   map_features_other_model_dataFiles = lapply(map_features_other_model,
@@ -61,6 +67,10 @@ if(interactive()){ ## if interactive, load all chromosomes obtained in the non-t
   for(dataFile in seq(1, length(map_features_other_model_dataFiles), 1)){
     names(map_features_other_model_dataFiles)[[dataFile]] = unique(map_features_other_model_dataFiles[[dataFile]]$seqnames) ; gc()
     } ; gc()
+  
+  # choose one chromosome
+  chromosome = "chr21"
+  map_features = map_features_other_model_dataFiles[[chromosome]]
   
   } else {
     # if interactive, load just one chromosome at a time (in parallel with nextflow), from this model
@@ -72,16 +82,13 @@ if(interactive()){ ## if interactive, load all chromosomes obtained in the non-t
 
 # load collected median_scores from 1st process
 median_scores = ifelse(interactive(),
-                       yes = lapply(list(c("../../../model_NONmatching_mixedmodel/1_parser_and_regressions/work/26/08b67aa330177901dc72e70df9cc6b/median_score_OGG1_GOx30_chipseq.tsv",
-                                           "../../../model_NONmatching_mixedmodel/1_parser_and_regressions/work/02/bd5527ea98ae2fbcb50d1c7947a0fb/median_score_OGG1_GOx60_chipseq.tsv",
-                                           "../../../model_NONmatching_mixedmodel/1_parser_and_regressions/work/fb/0c57088546769b3d33c5ce901bdda8/median_score_UV_XRseq_NHF1_PP64_1h_Rep1.tsv",
-                                           "../../../model_NONmatching_mixedmodel/1_parser_and_regressions/work/f2/acd0d55a2fb0d7a07260a120f0d01e/median_score_UV_XRseq_NHF1_CPD_1h.tsv",
-                                           "../../../model_NONmatching_mixedmodel/1_parser_and_regressions/work/d2/65d1e94a5015f7106d266899bae572/median_score_XRCC4.tsv",
-                                           "../../../model_NONmatching_mixedmodel/1_parser_and_regressions/work/58/2192db8e29c53114153463b867ce68/median_score_SETD2_control.tsv",
-                                           "../../../model_NONmatching_mixedmodel/1_parser_and_regressions/work/73/4d3c3f1693923f3808026f1194d58f/median_score_MSH6_control.tsv",
-                                           "../../../model_NONmatching_mixedmodel/1_parser_and_regressions/work/35/ba92f745984eec59ec4ca62cd3d2df/median_score_TP53_dauno_MOLM13.tsv",
-                                           "../../../model_NONmatching_mixedmodel/1_parser_and_regressions/work/db/db4afaf45c9ec6f18e486dc5dfcc87/median_score_TP53_dauno_K562.tsv",
-                                           "../../../model_NONmatching_mixedmodel/1_parser_and_regressions/work/fb/8caddf7603a8d872bd5df497010bea/median_score_AID_regions.tsv")), 
+                       yes = lapply(list(c(# add OGG1×2 + TP53×2,
+                                           Sys.glob("../../../model_NONmatching_mixedmodel/1_parser_and_regressions/work/[[:alnum:]][[:alnum:]]/*/median_score_UV_XRseq_NHF1_PP64_1h_Rep1.tsv")[1],
+                                           Sys.glob("../../../model_NONmatching_mixedmodel/1_parser_and_regressions/work/[[:alnum:]][[:alnum:]]/*/median_score_UV_XRseq_NHF1_CPD_1h.tsv")[1],
+                                           Sys.glob("../../../model_NONmatching_mixedmodel/1_parser_and_regressions/work/[[:alnum:]][[:alnum:]]/*/median_score_XRCC4.tsv")[1],
+                                           Sys.glob("../../../model_NONmatching_mixedmodel/1_parser_and_regressions/work/[[:alnum:]][[:alnum:]]/*/median_score_SETD2_control.tsv")[1],
+                                           Sys.glob("../../../model_NONmatching_mixedmodel/1_parser_and_regressions/work/[[:alnum:]][[:alnum:]]/*/median_score_MSH6_control.tsv")[1],
+                                           Sys.glob("../../../model_NONmatching_mixedmodel/1_parser_and_regressions/work/[[:alnum:]][[:alnum:]]/*/median_score_AID_regions.tsv")[1])), 
                                     read_tsv),
                        no = lapply(list(args[-(1:2)]), read_tsv)) %>%
   Reduce(function(x, y) bind_rows(x, y), .)
@@ -103,7 +110,7 @@ features_with_character_levels = map_features %>%
 
 ## binarize weighted average DNA repair value by being lower or larger than the across-genome median
 
-map_features_binarized_temp = map_features %>%
+map_features_binarized = map_features %>%
   lazy_dt %>% 
   #### WARNING first do the average score at duplicated (start end) ranges, this is due to the (in some features) hg38-->hg19 lift dividing some ranges into 2 alternative ranges with the same score
   group_by_at(vars('seqnames', 'start', 'end', features_with_character_levels)) %>% 
@@ -122,11 +129,12 @@ map_features_binarized_temp = map_features %>%
   relocate(features_with_character_levels, .after = last_col()) %>% 
   unite("metadata", !matches("seqnames|start|end|width|strand")) %>% 
   makeGRangesFromDataFrame(keep.extra.columns = T)
+rm(map_features) ; gc()
 
 ## collapse contiguous ranges if they have same metadata levels
-map_features_binarized_temp = unlist(reduce(split(map_features_binarized_temp, ~metadata)))
-mcols(map_features_binarized_temp) = names(map_features_binarized_temp)
-map_features_binarized = map_features_binarized_temp %>% 
+map_features_binarized = unlist(reduce(split(map_features_binarized, ~metadata)))
+mcols(map_features_binarized) = names(map_features_binarized)
+map_features_binarized = map_features_binarized %>% 
   as_tibble %>% 
   arrange(start) %>% 
   mutate(X = gsub("AID_", "AID ", X)) %>% 
@@ -172,7 +180,7 @@ trinuc32_freq = trinucleotideFrequency(sequences) %>%
   as_tibble %>% 
   arrange(as.numeric(id)) %>% 
   select(-id)
-gc()
+rm(sequences) ; gc()
 
 # bind trinuc32 freqs to map_features_binarized
 map_features_binarized_trinuc32_freq = map_features_binarized %>% 
@@ -184,18 +192,20 @@ map_features_binarized_trinuc32_freq = map_features_binarized %>%
   relocate(chrom) %>% 
   # prepare for matching
   unite(col = "bin", !matches("^[A,C,T,G][C,T][A,C,T,G]$")) %>% 
-  column_to_rownames("bin")
-gc()
+  column_to_rownames("bin") %>% 
+  # remove "all-0-mut" rows (bins)
+  filter(rowSums(.) >= 1)
+rm(trinuc32_freq) ; rm(map_features_binarized) ; gc()
 
 ### trinuc matching
-map_features_binarized_trinuc32_freq_matched = trinuc_sampling_per_bin(map_features_binarized_trinuc32_freq,
-                                                                       stoppingCriterionTolerance = 0.001,
-                                                                       stoppingCriterionVar_score = 0.1,
-                                                                       min_rm_muts = 100) %>% 
+map_features_binarized_trinuc32_freq_matched = trinuc_sampling_per_bin_mymod_marina(map_features_binarized_trinuc32_freq,
+                                                                                    stoppingCriterion = 0.001,
+                                                                                    maxIter = 50000) %>% 
   mutate(bin = gsub("AID_", "AID", bin)) %>% 
   separate(bin, into = map_features_binarized %>% 
                          select(-c(start, end, width, strand)) %>% 
                          names) %>% 
   mutate_all(~gsub("AIDtarget", "AID_target", .))
+rm(map_features_binarized_trinuc32_freq) ; gc()
 
 write_tsv(map_features_binarized_trinuc32_freq_matched, paste0("map_features_binarized_", chromosome, ".tsv"))
