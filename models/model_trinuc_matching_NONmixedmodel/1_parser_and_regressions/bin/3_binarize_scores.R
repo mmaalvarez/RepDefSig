@@ -82,12 +82,15 @@ if(interactive()){ ## if interactive, load all chromosomes obtained in the non-t
 
 # load collected median_scores from 1st process
 median_scores = ifelse(interactive(),
-                       yes = lapply(list(c(# add OGG1×2 + TP53×2,
+                       yes = lapply(list(c(Sys.glob("../../../model_NONmatching_mixedmodel/1_parser_and_regressions/work/[[:alnum:]][[:alnum:]]/*/median_score_OGG1_GOx30_chipseq.tsv")[1],
+                                           Sys.glob("../../../model_NONmatching_mixedmodel/1_parser_and_regressions/work/[[:alnum:]][[:alnum:]]/*/median_score_OGG1_GOx60_chipseq.tsv")[1],
                                            Sys.glob("../../../model_NONmatching_mixedmodel/1_parser_and_regressions/work/[[:alnum:]][[:alnum:]]/*/median_score_UV_XRseq_NHF1_PP64_1h_Rep1.tsv")[1],
                                            Sys.glob("../../../model_NONmatching_mixedmodel/1_parser_and_regressions/work/[[:alnum:]][[:alnum:]]/*/median_score_UV_XRseq_NHF1_CPD_1h.tsv")[1],
                                            Sys.glob("../../../model_NONmatching_mixedmodel/1_parser_and_regressions/work/[[:alnum:]][[:alnum:]]/*/median_score_XRCC4.tsv")[1],
                                            Sys.glob("../../../model_NONmatching_mixedmodel/1_parser_and_regressions/work/[[:alnum:]][[:alnum:]]/*/median_score_SETD2_control.tsv")[1],
                                            Sys.glob("../../../model_NONmatching_mixedmodel/1_parser_and_regressions/work/[[:alnum:]][[:alnum:]]/*/median_score_MSH6_control.tsv")[1],
+                                           Sys.glob("../../../model_NONmatching_mixedmodel/1_parser_and_regressions/work/[[:alnum:]][[:alnum:]]/*/median_score_TP53_dauno_K562.tsv")[1],
+                                           Sys.glob("../../../model_NONmatching_mixedmodel/1_parser_and_regressions/work/[[:alnum:]][[:alnum:]]/*/median_score_TP53_dauno_MOLM13.tsv")[1],
                                            Sys.glob("../../../model_NONmatching_mixedmodel/1_parser_and_regressions/work/[[:alnum:]][[:alnum:]]/*/median_score_AID_regions.tsv")[1])), 
                                     read_tsv),
                        no = lapply(list(args[-(1:2)]), read_tsv)) %>%
@@ -200,7 +203,8 @@ rm(trinuc32_freq) ; rm(map_features_binarized) ; gc()
 ### trinuc matching
 map_features_binarized_trinuc32_freq_matched = trinuc_sampling_per_bin_mymod_marina(map_features_binarized_trinuc32_freq,
                                                                                     stoppingCriterion = 0.001,
-                                                                                    maxIter = 50000) %>% 
+                                                                                    maxIter = 50000,
+                                                                                    n_finish_tokens = 1000) %>% 
   mutate(bin = gsub("AID_", "AID", bin)) %>% 
   separate(bin, into = map_features_binarized %>% 
                          select(-c(start, end, width, strand)) %>% 

@@ -13,11 +13,11 @@ conflict_prefer("reduce", "IRanges")
 args = commandArgs(trailingOnly=TRUE)
 
 dnarep_mark = ifelse(interactive(),
-                          yes = "AID_regions",
+                          yes = "TP53_dauno_K562",
                           no = args[1])
 
 dnarep_mark_path = ifelse(interactive(),
-                      	  yes = "/g/strcombio/fsupek_cancer3/malvarez/WGS_tumors/somatic_variation/TCGA_PCAWG_Hartwig_CPTAC_POG_MMRFCOMMPASS/AID_SHM/0_AID_regions/AID_regions.bed",
+                      	  yes = "/g/strcombio/fsupek_cancer3/malvarez/chromatin_info/DNA_repair__protein_binding/TP53/gaps_score0/GSM3781507_WT_KO_Dauno_coverage_gaps-to-score-0.bed",
                       	  no = args[2]) %>% 
   # remove comment
   gsub("( |\t).*", "", .)

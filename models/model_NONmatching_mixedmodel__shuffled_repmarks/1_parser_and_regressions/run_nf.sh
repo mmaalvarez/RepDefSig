@@ -16,8 +16,10 @@ nextflow -log $PWD/log/nextflow.log run pipe.nf --dnarep_marks $PWD/input_lists/
 												--utils /g/strcombio/fsupek_data/users/malvarez/projects/RepDefSig/bin/utils.R \
 												--memory_process1 10 \
 												--memory_process2 15 \
-												--memory_process3 65 \
-												--memory_process4 4 \
-												--memory_process5 50 \
-												--memory_process6 50 \
+												--memory_process3 100 \
+												--memory_process4 8 \
+												--memory_process5.1 15 \
+												--memory_process5.2 15 \
+												--memory_process6.1 15 \
+												--memory_process6.2 15 \
 												-resume #\ -with-tower

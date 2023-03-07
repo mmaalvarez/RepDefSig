@@ -43,7 +43,7 @@ process list_median_scores {
 }
 
 // the same median_scores is passed to several processes
-median_scores.into{median_scores_for_binarize_scores; median_scores_for_load_sample_somatic_muts_overlap_feature_maps_run_regressions; median_scores_for_sim_pos_con}
+median_scores.into{median_scores_for_binarize_scores; median_scores_for_load_sample_somatic_muts_overlap_feature_maps; median_scores_for_sim_pos_con}
 
 
 
@@ -87,12 +87,8 @@ process load_feature_maps {
     """
 }
 
-// the same map_features is passed to 2 processes
-map_features.into{map_features_to_collect; map_features_for_binarize_scores}
-
-// rowbind all chromosomes' raw score map features, will be read by 5th process's R script (hardcoded)
-map_features_to_collect
-    .collectFile(name: "res/map_features.tsv", keepHeader: true)
+// the same map_features is passed to several processes
+map_features.into{map_features_for_binarize_scores; map_features_for_process5.1; map_features_for_process6.1}
 
 
 
@@ -169,7 +165,9 @@ process offset {
 }
 
 // the same offset_table is passed to 2 diff processes
-offset_table.into{offset_table_for_load_sample_somatic_muts_overlap_feature_maps_run_regressions; offset_table_for_sim_pos_con}
+offset_table.into{offset_table_for_process5.2; offset_table_for_process6.1}
+
+
 
 
 
@@ -180,25 +178,24 @@ Channel
     .splitCsv(header:false)
     .set{ sample_name }
 
-process load_sample_somatic_muts_overlap_feature_maps_run_regressions {
+// also in parallel per chromosome
+process load_sample_somatic_muts_overlap_feature_maps {
 
     //queue = 'normal_prio_long'
-    time = 8.hour
-    memory = { (params.memory_process5 + 4*(task.attempt-1)).GB }
+    time = 24.hour
+    memory = { (params.memory_process5.1 + 4*(task.attempt-1)).GB }
 
     input:
     val sample from sample_name
     val somatic_data from params.somatic_data
-    val metadata from params.metadata
     path dnarep_marks from params.dnarep_marks
     path chromatin_features from params.chromatin_features 
-    path offset from offset_table_for_load_sample_somatic_muts_overlap_feature_maps_run_regressions // from previous process
+    path 'map_features_single_chr' from map_features_for_process5.1 // raw score map features PER CHROMOSOME (not collected)
     path 'good_mappability_regions' from params.good_mappability_regions
-    path median_scores_collected from median_scores_for_load_sample_somatic_muts_overlap_feature_maps_run_regressions.collect() // from 1st process
-    // res/map_features.tsv from 2nd process read directly in R 
+    path median_scores_collected from median_scores_for_load_sample_somatic_muts_overlap_feature_maps.collect() // from 1st process
 
     output:
-    file 'results_sample.tsv' into results
+    file 'ready_for_regression_chr*.tsv' into ready_for_regression_single_chromosome
 
     """
     #!/usr/bin/env bash
@@ -209,22 +206,61 @@ process load_sample_somatic_muts_overlap_feature_maps_run_regressions {
         then
             # there is a conda environment named "R"
             conda activate R
-            Rscript $PWD/bin/5_load_sample_somatic_muts_overlap_feature_maps_run_regressions.R ${sample} ${somatic_data} ${metadata} ${dnarep_marks} ${chromatin_features} ${offset} $PWD ${good_mappability_regions} ${median_scores_collected}
+            Rscript $PWD/bin/5.1_load_sample_somatic_muts_overlap_feature_maps.R ${sample} ${somatic_data} ${dnarep_marks} ${chromatin_features} ${map_features_single_chr} ${good_mappability_regions} ${median_scores_collected}
         else
             # no conda environment named "R"
-            Rscript $PWD/bin/5_load_sample_somatic_muts_overlap_feature_maps_run_regressions.R ${sample} ${somatic_data} ${metadata} ${dnarep_marks} ${chromatin_features} ${offset} $PWD ${good_mappability_regions} ${median_scores_collected}
+            Rscript $PWD/bin/5.1_load_sample_somatic_muts_overlap_feature_maps.R ${sample} ${somatic_data} ${dnarep_marks} ${chromatin_features} ${map_features_single_chr} ${good_mappability_regions} ${median_scores_collected}
         fi
     else
         # no conda
-        Rscript $PWD/bin/5_load_sample_somatic_muts_overlap_feature_maps_run_regressions.R ${sample} ${somatic_data} ${metadata} ${dnarep_marks} ${chromatin_features} ${offset} $PWD ${good_mappability_regions} ${median_scores_collected}
+        Rscript $PWD/bin/5.1_load_sample_somatic_muts_overlap_feature_maps.R ${sample} ${somatic_data} ${dnarep_marks} ${chromatin_features} ${map_features_single_chr} ${good_mappability_regions} ${median_scores_collected}
+    fi
+    """
+}
+
+// now concatenate chromosomes and run regressions
+process real_data_concat_chr_add_offset_run_regression {
+
+    time = 24.hour
+    memory = { (params.memory_process5.2 + 4*(task.attempt-1)).GB }
+
+    input:
+    val sample from sample_name
+    val metadata from params.metadata
+    path dnarep_marks from params.dnarep_marks
+    path offset from offset_table_for_process5.2 // from 4th process
+    path ready_for_regression from ready_for_regression_single_chromosome.collect() // rowbind chromosomes from previous process
+
+    output:
+    file 'results_real_sample.tsv' into results_real_sample
+
+    """
+    #!/usr/bin/env bash
+
+    if command -v conda &> /dev/null
+    then
+        if conda env list | grep "^R " >/dev/null 2>/dev/null
+        then
+            # there is a conda environment named "R"
+            conda activate R
+            Rscript $PWD/bin/5.2_concat_chr_add_offset_run_regression.R ${sample} ${metadata} ${dnarep_marks} ${offset} ${ready_for_regression}
+        else
+            # no conda environment named "R"
+            Rscript $PWD/bin/5.2_concat_chr_add_offset_run_regression.R ${sample} ${metadata} ${dnarep_marks} ${offset} ${ready_for_regression}
+        fi
+    else
+        # no conda
+        Rscript $PWD/bin/5.2_concat_chr_add_offset_run_regression.R ${sample} ${metadata} ${dnarep_marks} ${offset} ${ready_for_regression}
     fi
     """
 }
 
 // rowbind regression results of all (real) samples
-results
-    .collectFile(name: 'res/results.tsv', keepHeader: true)
-    .println { "Regression results for all real samples saved in res/results.tsv" }
+results_real_sample
+    .collectFile(name: 'res/results_real_samples.tsv', keepHeader: true)
+    .println { "Regression results for all real samples saved in res/results_real_samples.tsv" }
+
+
 
 
 
@@ -240,20 +276,57 @@ Channel
 // also in parallel, fold-values by which increase mutation burden in each DNA repair mark's "high abundance" bins
 mutation_foldincs = Channel.from(params.mutation_foldinc.tokenize(','))
 
+// also in parallel per chromosome
 process sim_pos_con {
     
-    time = 8.hour
-    memory = { (params.memory_process6 + 5*(task.attempt-1)).GB }
+    time = 24.hour
+    memory = { (params.memory_process6.1 + 5*(task.attempt-1)).GB }
 
     input:
     val somatic_data from params.somatic_data
     val metadata from params.metadata
     path dnarep_marks from params.dnarep_marks
     path chromatin_features from params.chromatin_features 
-    path offset from offset_table_for_sim_pos_con // from 4th process
+    path offset from offset_table_for_process6.1 // from 4th process
+    path 'map_features_single_chr' from map_features_for_process5.1 // raw score map features PER CHROMOSOME (not collected)
     path 'good_mappability_regions' from params.good_mappability_regions
     set name, path, mutation_foldinc from dnarep_marks_simulate.combine(mutation_foldincs) // nest mutation_foldincs within dnarep_marks_simulate
     path median_scores_collected from median_scores_for_sim_pos_con.collect() // from 1st process
+
+    output:
+    file 'ready_for_regression_chr*.tsv' into ready_for_regression_single_chromosome_sim_pos_con
+
+    """
+    #!/usr/bin/env bash
+
+    if command -v conda &> /dev/null
+    then
+        if conda env list | grep "^R " >/dev/null 2>/dev/null
+        then
+            # there is a conda environment named "R"
+            conda activate R
+            Rscript $PWD/bin/6.1_simulate_pos_controls.R ${somatic_data} ${metadata} ${dnarep_marks} ${chromatin_features} ${offset} ${map_features_single_chr} ${good_mappability_regions} ${mutation_foldinc} ${name} ${median_scores_collected}
+        else
+            # no conda environment named "R"
+            Rscript $PWD/bin/6.1_simulate_pos_controls.R ${somatic_data} ${metadata} ${dnarep_marks} ${chromatin_features} ${offset} ${map_features_single_chr} ${good_mappability_regions} ${mutation_foldinc} ${name} ${median_scores_collected}
+        fi
+    else
+        # no conda
+        Rscript $PWD/bin/6.1_simulate_pos_controls.R ${somatic_data} ${metadata} ${dnarep_marks} ${chromatin_features} ${offset} ${map_features_single_chr} ${good_mappability_regions} ${mutation_foldinc} ${name} ${median_scores_collected}
+    fi
+    """
+}
+
+// now concatenate chromosomes and run regressions
+process sim_pos_con_concat_chr_run_regression {
+
+    time = 24.hour
+    memory = { (params.memory_process6.2 + 5*(task.attempt-1)).GB }
+
+    input:
+    val metadata from params.metadata
+    path dnarep_marks from params.dnarep_marks
+    path ready_for_regression from ready_for_regression_single_chromosome_sim_pos_con.collect() // rowbind chromosomes from previous process
 
     output:
     file 'simulated_positive_control.tsv' into sim_pos_con
@@ -267,14 +340,14 @@ process sim_pos_con {
         then
             # there is a conda environment named "R"
             conda activate R
-            Rscript $PWD/bin/6_simulate_pos_controls.R ${somatic_data} ${metadata} ${dnarep_marks} ${chromatin_features} ${offset} $PWD ${good_mappability_regions} ${mutation_foldinc} ${name} ${median_scores_collected}
+            Rscript $PWD/bin/6.2_concat_chr_run_regression.R ${metadata} ${dnarep_marks} ${ready_for_regression}
         else
             # no conda environment named "R"
-            Rscript $PWD/bin/6_simulate_pos_controls.R ${somatic_data} ${metadata} ${dnarep_marks} ${chromatin_features} ${offset} $PWD ${good_mappability_regions} ${mutation_foldinc} ${name} ${median_scores_collected}
+            Rscript $PWD/bin/6.2_concat_chr_run_regression.R ${metadata} ${dnarep_marks} ${ready_for_regression}
         fi
     else
         # no conda
-        Rscript $PWD/bin/6_simulate_pos_controls.R ${somatic_data} ${metadata} ${dnarep_marks} ${chromatin_features} ${offset} $PWD ${good_mappability_regions} ${mutation_foldinc} ${name} ${median_scores_collected}
+        Rscript $PWD/bin/6.2_concat_chr_run_regression.R ${metadata} ${dnarep_marks} ${ready_for_regression}
     fi
     """
 }

@@ -27,25 +27,30 @@ euclidean = function(a, b) {
 } 
 
 ## main function (GOOD, new)
+#counts = read_tsv("test_counts.tsv")
 trinuc_sampling_per_bin_mymod_marina = function(counts, 
                                                 stoppingCriterion = 0.001, # maximum tolerated distance (in relative frequency) in any column in any row; default 0.1% should be okay, if a bit stringent, for the 32 contexts (trinucleotide, strand-symmetrical)
                                                 maxIter = 50000, # to prevent endless loops (in reality this can be a very high #, this works quite fast)
                                                 n_finish_tokens = 1000){
   original_counts = counts
-  mintolerance = 10000000000000000000
+  tolerance = 10000000000000000000
+  mintolerance = tolerance
   counts_mintolerance = counts
   finish_token = 0
   iter=0
   
   start_time = Sys.time()
 
+  ### fix that counts offender row and correctable column are the ones intended, now it uses indices which is wrong since they are the indices of counts_not_too_few_mut_bins
+  ### fix while loop that only ends when we have offender row with correctable column
+  
   while ( TRUE ) {
     
-    iter=iter+1;
+    iter = iter + 1
 
     ## mark which bins have too few mutations, to ignore them for offender search (i.e. less than the total current sum of mutations (across rows AND columns) divided by the number of bins)
     too_few_mut_bins = filter(data.frame(rowSums(counts)),
-                              `rowSums.counts.` <= (sum(rowSums(counts)) / length(rownames(counts)) / 1000)) %>% 
+                              `rowSums.counts.` <= (sum(rowSums(counts)) / length(rownames(counts)) / 100)) %>% # WARNING: div. by 100 so that not too many bins are excluded, revisit this
       rownames
     
     # check whether every row is declared as unusable (would result in an emtpy 'offender')
@@ -55,57 +60,73 @@ trinuc_sampling_per_bin_mymod_marina = function(counts,
       break
     }
 
-    ## filter out bins (rows) with too few mutations (i.e. less than the total current sum of mutations (across rows AND columns) divided by the number of bins)
-    counts_not_too_few_mut_bins = rownames_to_column(counts, "bin") %>% 
+    # all rows are used for the "baseline mean frequencies"
+    meanFreqs = colMeans(rowNorm(counts), na.rm = T)
+    
+    # ...but the 'too_few_mut_bins' are excluded from being candidates for offender,
+    freqs_not_too_few_mut_bins = rownames_to_column(counts, "bin") %>% 
+      ## so filter out bins (rows) with too few mutations
       filter(! bin %in% too_few_mut_bins) %>% 
-      column_to_rownames("bin")
-
-    freqs=rowNorm(counts_not_too_few_mut_bins);
-    meanFreqs=colMeans(freqs, na.rm = T);
+      column_to_rownames("bin") %>% 
+      rowNorm()
     
-    # find the 'offending' row which is most different from the mean relFreq vector
-    offender = which.max( apply(freqs, 1, function(x){ euclidean(x,meanFreqs) })  );
-
-    if(sum(counts[offender,]) <= 0){
-      counts = counts_mintolerance
-      cat(sprintf("ERROR: Cannot continue optimization at iter %i/%i - no more nts at the offender bin '%s' - Tolerance: %f -- Exiting and returning mintolerance results (%f)\nAnalysis terminated after %s\n", iter, maxIter, offender, as.numeric(tolerance), mintolerance, paste(round(Sys.time() - start_time, 2), units(Sys.time() - start_time))))
-      break
-    }
-
-    diffs = meanFreqs - freqs[offender,];
+    got_offender_row_corr_col = F
     
-    # in that row, find the column which is most responsible for the difference
-    # however importantly we care ONLY about the negative differences in this vector!
-    # i.e. those are the cases where the offending row has HIGHER freqs
-    # (meaning we can correct that by removing sites... we can't add sites!!)
-    
-    is.correctableCol.zero = T
-    
-    while(is.correctableCol.zero == T){
+    # LOOP HERE UNTIL WE HAVE AN OFFENDER ROW WITH CORRECTABLE COLUMN
+    while (got_offender_row_corr_col = F){
       
-      correctableCol = which.min(diffs)
+      # find the 'offender' row, which is the row most different from the meanFreqs vector
+      offender_name = which.max( apply(freqs_not_too_few_mut_bins, 1, function(x){ euclidean(x, meanFreqs) })) %>% # note that the meanFreqs DOES use ALL rows
+        names()
+      offender_row = rownames_to_column(counts, "bin") %>% 
+        filter(bin == offender_name) %>% 
+        column_to_rownames("bin")
+      offender_row_freqs = rowNorm(offender_row)
 
-      if(counts[offender, correctableCol] <= 0) {
-        cat( sprintf("WARNING: At iter %i/%i, counts exhausted at bin '%s's 'correctableCol' (trinuc %s), trying next `which.min(diffs)` trinuc - Tolerance: %f\n%s have passed\n", iter, maxIter, offender, names(correctableCol), as.numeric(tolerance), paste(round(Sys.time() - start_time, 2), units(Sys.time() - start_time))) )
+      diffs = meanFreqs - offender_row_freqs
+      
+      if(sum(offender_row) <= 0){
+        counts = counts_mintolerance
+        cat(sprintf("ERROR: Cannot continue optimization at iter %i/%i - no more nts at the offender bin '%s' - Tolerance: %f -- Exiting and returning mintolerance results (%f)\nAnalysis terminated after %s\n", iter, maxIter, offender_name, as.numeric(tolerance), mintolerance, paste(round(Sys.time() - start_time, 2), units(Sys.time() - start_time))))
+        break
+      }
+  
+      # in that row, find the column which is most responsible for the difference
+      # however importantly we care ONLY about the negative differences in this vector!
+      # i.e. those are the cases where the offending row has HIGHER freqs
+      # (meaning we can correct that by removing sites... we can't add sites!!)
+      
+      is.correctableCol.zero = T
+      
+      while(is.correctableCol.zero == T){
         
-        diffs[[correctableCol]] = NA
-        
-      } else {
-        is.correctableCol.zero = F
-        
-        # check if we have removed all trinuc from diffs (so we should move on to next row to be used as offender)
-        if(length(diffs) == 0){
-
-          counts_not_too_few_mut_bins = c(counts_not_too_few_mut_bins, offender)
+        correctableCol = which.min(diffs)
+  
+        if(counts_not_too_few_mut_bins[offender, correctableCol] <= 0) {
+          cat( sprintf("WARNING: At iter %i/%i, counts exhausted at bin '%s's 'correctableCol' (trinuc %s), trying next `which.min(diffs)` trinuc - Tolerance: %f\n%s have passed\n", iter, maxIter, offender, names(correctableCol), as.numeric(tolerance), paste(round(Sys.time() - start_time, 2), units(Sys.time() - start_time))) )
           
-          cat(sprintf("WARNING: At iter %i/%i, removed all trinuc from 'diffs'; Bin '%s' is not used anymore as 'offender' bin - Tolerance: %f\n%s have passed\n", iter, maxIter, offender, as.numeric(tolerance), paste(round(Sys.time() - start_time, 2), units(Sys.time() - start_time))))
+          diffs[[correctableCol]] = NA
+          
+        } else {
+          is.correctableCol.zero = F
+          
+          # check if we have removed all trinuc from diffs (so we should move on to next row to be used as offender)
+          if(length(diffs) == 0){
+  
+            counts_not_too_few_mut_bins = c(counts_not_too_few_mut_bins, offender)
+            
+            cat(sprintf("WARNING: At iter %i/%i, removed all trinuc from 'diffs'; Bin '%s' is not used anymore as 'offender' bin - Tolerance: %f\n%s have passed\n", iter, maxIter, offender, as.numeric(tolerance), paste(round(Sys.time() - start_time, 2), units(Sys.time() - start_time))))
+          } else {
+            # end loop
+            got_offender_row_corr_col = T
+          }
         }
       }
-    }
-
-    if(length(rownames(counts)) - length(too_few_mut_bins) <= 0){
-      cat( sprintf("WARNING: At iter %i/%i, there are no bins left for being used as 'offender' bin! Resetting the 'counts_not_too_few_mut_bins' list so it can loop again from the bins with most mutations - Tolerance: %f\n%s have passed\n", iter, maxIter, as.numeric(tolerance), paste(round(Sys.time() - start_time, 2), units(Sys.time() - start_time))))
-      counts_not_too_few_mut_bins = c()
+  
+      if(length(rownames(counts)) - length(too_few_mut_bins) <= 0){
+        cat( sprintf("WARNING: At iter %i/%i, there are no bins left for being used as 'offender' bin! Resetting the 'counts_not_too_few_mut_bins' list so it can loop again from the bins with most mutations - Tolerance: %f\n%s have passed\n", iter, maxIter, as.numeric(tolerance), paste(round(Sys.time() - start_time, 2), units(Sys.time() - start_time))))
+        counts_not_too_few_mut_bins = c()
+      }
     }
 
     worstCol = which.max(abs(diffs))  # this is sometimes the same as the correctable col
@@ -113,23 +134,23 @@ trinuc_sampling_per_bin_mymod_marina = function(counts,
     # calculate tolerance -- note that tolerance is expressed via worstCol not via correctableCol -- I am not sure if that is correct/optimal
     tolerance = abs(diffs[worstCol]) 
     
-    # store counts table if mintolerance
+    # store counts table if mintolerance is new minimum tolerance
     if(tolerance < mintolerance){
       mintolerance = tolerance
       counts_mintolerance = counts
     }
     
     # did we reduce the difference enough?
-    if ( tolerance <= stoppingCriterion ) {
-      cat( sprintf("Successfully completed optimization: tolerance reached. Poorest match at row %d col %d - Returning current results\n", offender, worstCol) );
-      break;
+    if (tolerance <= stoppingCriterion) {
+      cat(sprintf("Successfully completed optimization: tolerance reached. Poorest match at row %d col %d - Returning current results\n", offender, worstCol) );
+      break
     }
     
     # note this adjustment (subtraction) is too conservative, but by iterating it should converge to the right value
     subtractThis = round( diffs[correctableCol] * sum(counts[offender, ]) )
     
     if ( subtractThis == 0 ) {
-      # try n times more
+      # try ×'n_finish_tokens' times more
       subtractThis = 10
       finish_token = finish_token+1
       cat( sprintf("Count reduction <=0.5. Poorest match at row %d col %d - Continue (finish_token nº%i)...\n", offender, worstCol, finish_token) )
@@ -144,10 +165,10 @@ trinuc_sampling_per_bin_mymod_marina = function(counts,
     # now simply decrease counts in the responsible column to get closer to the mean
     counts[offender, correctableCol] = counts[offender, correctableCol] + subtractThis
     
-    if (iter==maxIter) {
+    if (iter == maxIter) {
       counts = counts_mintolerance
       cat( sprintf("Stopping optimization - maximum number of iterations reached - Returning mintolerance results (%f)\n", mintolerance) );
-      break;
+      break
     }  
     
     ## output log every 100th iter

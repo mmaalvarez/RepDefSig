@@ -4,9 +4,6 @@ library(GenomicRanges)
 library(rtracklayer)
 library(valr) # for granges merging
 library(rlang)
-library(MASS)
-library(lme4)
-library(broom.mixed)
 library(conflicted)
 conflict_prefer("filter", "dplyr")
 conflict_prefer("rename", "dplyr")
@@ -56,31 +53,34 @@ chromatin_features = ifelse(interactive(),
                             no = args[4]) %>%
   read_csv(comment = "#")
 
-# load offset from 3rd process
+# load offset from 4th process
 offset = ifelse(interactive(),
-                yes = "offset.tsv",
+                yes = Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/offset.tsv")[1],
                 no = args[5]) %>% 
   read_tsv
 # rename the chromatin environment column (typically 'RepliSeq') to match the "mb_domain" name given to the general mutation table
 colnames(offset)[1] = "mb_domain"
 
 
-## load map_features (all chromosomes) from 2nd process
+## load map_features (SINGLE chromosome) from 2nd process
 dfleft = ifelse(interactive(),
-                yes = "map_features_chr21.tsv", #"../res/map_features.tsv",
-                no = paste0(args[6], "/res/map_features.tsv")) %>% 
+                yes = Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/map_features_chr21.tsv"),
+                no = args[6]) %>% 
   fread %>% as_tibble %>% 
   rename("chrom" = "seqnames")
 gc()
+
+chromosome = unique(dfleft$chrom)
 
 
 ## NEW keep SNVs in good mappability regions
 good_mappability_regions = ifelse(interactive(),
                                  yes = "/g/strcombio/fsupek_home/mmunteanu/reference/CRG75_nochr.bed",
-                                 no = args[7]) %>%
+                                 no = args[7]) %>% 
   import.bed() %>% data.frame %>%
-  mutate(seqnames = gsub("^", "chr", seqnames)) %>%
-  rename("chrom" = "seqnames")
+  mutate(seqnames = gsub("^", "chr", seqnames)) %>% 
+  rename("chrom" = "seqnames") %>% 
+  filter(chrom == chromosome)
 
 
 ## load mutation fold increases to apply on baseline sample, in this iteration
@@ -91,23 +91,22 @@ mutfoldinc = ifelse(interactive(),
 
 
 # which dna repair mark has muts increased in this iteration
-dnarep_marks_simulate = ifelse(interactive(),
-                               yes = "AID_regions",
+dnarep_mark_simulate = ifelse(interactive(),
+                               yes = "OGG1_GOx30_chipseq",
                                no = args[9])
-
 
 ## load collected median_scores from 1st process
 median_scores = ifelse(interactive(),
-                       yes = lapply(list(c("../../../model_NONmatching_mixedmodel/1_parser_and_regressions/work/26/08b67aa330177901dc72e70df9cc6b/median_score_OGG1_GOx30_chipseq.tsv",
-                                           "../../../model_NONmatching_mixedmodel/1_parser_and_regressions/work/02/bd5527ea98ae2fbcb50d1c7947a0fb/median_score_OGG1_GOx60_chipseq.tsv",
-                                           "../../../model_NONmatching_mixedmodel/1_parser_and_regressions/work/fb/0c57088546769b3d33c5ce901bdda8/median_score_UV_XRseq_NHF1_PP64_1h_Rep1.tsv",
-                                           "../../../model_NONmatching_mixedmodel/1_parser_and_regressions/work/f2/acd0d55a2fb0d7a07260a120f0d01e/median_score_UV_XRseq_NHF1_CPD_1h.tsv",
-                                           "../../../model_NONmatching_mixedmodel/1_parser_and_regressions/work/d2/65d1e94a5015f7106d266899bae572/median_score_XRCC4.tsv",
-                                           "../../../model_NONmatching_mixedmodel/1_parser_and_regressions/work/58/2192db8e29c53114153463b867ce68/median_score_SETD2_control.tsv",
-                                           "../../../model_NONmatching_mixedmodel/1_parser_and_regressions/work/73/4d3c3f1693923f3808026f1194d58f/median_score_MSH6_control.tsv",
-                                           "../../../model_NONmatching_mixedmodel/1_parser_and_regressions/work/35/ba92f745984eec59ec4ca62cd3d2df/median_score_TP53_dauno_MOLM13.tsv",
-                                           "../../../model_NONmatching_mixedmodel/1_parser_and_regressions/work/db/db4afaf45c9ec6f18e486dc5dfcc87/median_score_TP53_dauno_K562.tsv",
-                                           "../../../model_NONmatching_mixedmodel/1_parser_and_regressions/work/fb/8caddf7603a8d872bd5df497010bea/median_score_AID_regions.tsv")), 
+                       yes = lapply(list(c(Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/median_score_OGG1_GOx30_chipseq.tsv")[1],
+                                           Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/median_score_OGG1_GOx60_chipseq.tsv")[1],
+                                           Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/median_score_UV_XRseq_NHF1_PP64_1h_Rep1.tsv")[1],
+                                           Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/median_score_UV_XRseq_NHF1_CPD_1h.tsv")[1],
+                                           Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/median_score_XRCC4.tsv")[1],
+                                           Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/median_score_SETD2_control.tsv")[1],
+                                           Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/median_score_MSH6_control.tsv")[1],
+                                           Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/median_score_TP53_dauno_K562.tsv")[1],
+                                           Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/median_score_TP53_dauno_MOLM13.tsv")[1],
+                                           Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/median_score_AID_regions.tsv")[1])), 
                                     read_tsv),
                        no = lapply(list(args[-(1:9)]), read_tsv)) %>%
   Reduce(function(x, y) bind_rows(x, y), .)
@@ -133,8 +132,9 @@ for(control_sample in control_samples){
   
   ## load sample
   dfright = read_csv(existing_file) %>%
-    select(chr, start, end) %>% 
-    rename("chrom" = "chr") %>%
+    select(chr, start, end, tri) %>% 
+    rename("chrom" = "chr")  %>% 
+    filter(chrom == chromosome) %>%
     mutate(mut_id = paste0("mut_", row_number()))
   gc()
 
@@ -146,7 +146,7 @@ for(control_sample in control_samples){
     rename_all(~str_replace_all(., "_dfleft|_dfright", "")) %>%
     # now intersect with dfleft
     bed_intersect(dfleft, suffix = c("_dfright", "_dfleft")) %>%
-    select(-c(contains("chrom"), contains("start_"), contains("end_"), contains("width_"), contains("strand_"), contains("overlap"))) %>%
+    select(-c(contains("chrom"), contains("start_"), contains("end_"), contains("width_"), contains("strand_"))) %>%
     # remove the "dleft" and "dright" parts of the column names
     rename_all(~str_replace_all(., "_dfleft|_dfright", "")) %>%
     # combine chromatin features (although there should typically be only RepliSeq)
@@ -167,26 +167,23 @@ for(control_sample in control_samples){
               ~if(unique(.)[1] %in% c('AID_target', 'bgGenome')){
                 factor(., ordered = T, levels = c('AID_target', 'bgGenome')) # higher mut rates --> baseline
               }else{
-                factor(., ordered = T, levels = c('low', 'high'))}) # baseline --> lower mut rates
-    
-  if(nrow(merged) == 0){
-    stop("ERROR - Empty 'merged' table: probably 'good_mappability_regions' has removed all SNVs for this CONTROL sample! Exiting...\n")
-  }
-  
-  merged = merged %>% 
+                factor(., ordered = T, levels = c('low', 'high'))}) %>% # baseline --> lower mut rates
     ### mut count
     select(-mut_id) %>% 
     table %>%
     as.data.frame %>%
     rename("mutcount" = "Freq") %>% 
-    ungroup %>% 
-    mutate(mb_domain = as.double(mb_domain)) %>% 
-    as_tibble() %>% 
-    # add offset to have 0 muts in the non-existing combinations
-    merge(select(offset, -log_freq_trinuc32), all = T) %>%
+    # add offset (table) to have 0 muts in the non-existing combinations...
+    merge(offset, all = T) %>%
     replace_na(list(mutcount = 0)) %>% 
     relocate(mutcount) %>% 
+    # ... but not really using the actual offset column at this point
+    select(-log_freq_trinuc32) %>% 
     mutate("control_sample" = control_sample)
+  
+  if(nrow(merged) == 0){
+    stop("ERROR - Empty 'merged' table: probably 'good_mappability_regions' has removed all SNVs for this CONTROL sample! Exiting...\n")
+  }
   
   ### append to control_samples_table if this exists, otherwise create it
   if(exists("control_samples_table")){
@@ -209,7 +206,7 @@ mut_burden_controls = control_samples_table %>%
   quantile
 
 if((mut_burden_controls[["75%"]] + 1.5 * (mut_burden_controls[["75%"]] - mut_burden_controls[["25%"]]))  >  max(mut_burden_controls)){
-  c(sprintf("There are no 'extreme' outliers\n"))
+  cat(sprintf("There are no 'extreme' outliers\n"))
 }
 
 control_samples_no_outliers = control_samples_table %>% 
@@ -229,64 +226,28 @@ baseline_sample = control_samples_table %>%
 
 
 ### simulate pos control samples out of the baseline_sample
-simulations_by_mark = list()
-
 sim_pos_con = baseline_sample %>% 
-  select(mb_domain, dnarep_marks_simulate, mean_mutcount) %>% 
-  group_by(mb_domain, !!sym(dnarep_marks_simulate)) %>% 
+  select(tri, mb_domain, dnarep_mark_simulate, mean_mutcount) %>% 
+  group_by(tri, mb_domain, !!sym(dnarep_mark_simulate)) %>% 
   # collapse bins
-  summarise(sum_mean_mutcount = sum(mean_mutcount))
-
-# increase mutations in bins that are i) "high" repair mark abundance -to approach the baseline-, or ii) "AID_target" -to simulate an AID-SHM sample-, by "mutfoldinc" times
-sim_pos_con = sim_pos_con %>% 
+  summarise(sum_mean_mutcount = sum(mean_mutcount)) %>% 
+  # increase mutations in bins that are i) "high" repair mark abundance -to approach the baseline-, or ii) "AID_target" -to simulate an AID-SHM sample-, by "mutfoldinc" times
   mutate("simulated_mutcount_{mutfoldinc}fold" := ifelse(get(dnarep_mark_simulate) %in% c("high", "AID_target"),
                                                                yes = ceiling(sum_mean_mutcount * mutfoldinc),
-                                                               no = ceiling(sum_mean_mutcount)))
-altered_level = ifelse(dnarep_mark_simulate == "AID_regions",
-                       yes = "targets",
-                       no = "high_activity")
-# parse output
-sim_pos_con = sim_pos_con %>% 
+                                                               no = ceiling(sum_mean_mutcount))) %>% 
+  # here we do leave the offset column
   merge(offset, all = T) %>% 
   select(starts_with("simulated_mutcount"),
          dnarep_marks$name,
          mb_domain,
+         tri,
          log_freq_trinuc32) %>% 
   ungroup %>% 
-  # mb_domain as ordered factor
-  mutate(mb_domain = factor(mb_domain, ordered = T)) %>% 
-  arrange(mb_domain) %>% 
-  as_tibble
+  as_tibble %>% 
+  drop_na() %>% 
+  mutate(simulated_mark = dnarep_mark_simulate)
 
 gc()
 
 
-### regression
-
-# formula specifies which of the fold values that were used to simulate the mutcounts to use as dependent variable
-formula = paste0(paste0("simulated_mutcount_", mutfoldinc, "fold ~ "),
-                 paste(dnarep_marks$name, collapse = " + "), " + ",
-                 "mb_domain + ",
-                 "offset(log_freq_trinuc32)")
-
-# stick to a generalized linear model for the negative binomial family
-y = suppressWarnings(glm.nb(formula = formula, 
-                            data = sim_pos_con))
-
-## parse output
-y_tidy = broom::tidy(y) %>%
-  filter(term != "(Intercept)" & !str_detect(term, "mb_domain")) %>%
-  # calc CI 95% from std error
-  mutate("conf.low" = estimate - `std.error`*1.96,
-         "conf.high" = estimate + `std.error`*1.96) %>% 
-  select(c(term, estimate, contains("conf"))) %>% 
-  pivot_wider(names_from = term, values_from = c(estimate, conf.low, conf.high)) %>%
-  mutate(sample_id = paste0(dnarep_mark_simulate, "-", altered_level, "__muts_", mutfoldinc, "-fold"),
-         info1 = sample_id,
-         info2 = sample_id,
-         # theta value used, either because it was optimal or because it reached 10 iterations
-         theta = y$theta) %>% 
-  relocate(sample_id)
-gc()
-
-write_tsv(y_tidy, "simulated_positive_control.tsv")
+write_tsv(sim_pos_con, paste0("ready_for_regression_", chromosome, ".tsv"))
