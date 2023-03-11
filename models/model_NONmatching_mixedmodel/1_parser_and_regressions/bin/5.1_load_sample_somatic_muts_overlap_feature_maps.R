@@ -132,7 +132,9 @@ merged = dfright %>%
             ~if(unique(.)[1] %in% c('AID_target', 'bgGenome')){
               factor(., ordered = T, levels = c('AID_target', 'bgGenome')) # higher mut rates --> baseline
             }else{
-              factor(., ordered = T, levels = c('low', 'high'))}) # baseline --> lower mut rates
+              factor(., ordered = T, levels = c('low', 'high'))}) %>% # baseline --> lower mut rates
+  mutate(sample_id = sample)
+
 gc()
 
 if(nrow(merged) == 0){

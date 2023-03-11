@@ -16,7 +16,7 @@ conflict_prefer("reduce", "IRanges")
 
 # load utils.R (functions) -- only used here if trinucleotide matching
 if(interactive()){
-  source("trinucmatch_testing.R")
+  source("../../../../bin/utils.R")
 } else {
   source(args[1])
 }
@@ -201,10 +201,11 @@ map_features_binarized_trinuc32_freq = map_features_binarized %>%
 rm(trinuc32_freq) ; rm(map_features_binarized) ; gc()
 
 ### trinuc matching
-map_features_binarized_trinuc32_freq_matched = trinuc_sampling_per_bin_mymod_marina(map_features_binarized_trinuc32_freq,
-                                                                                    stoppingCriterion = 0.001,
-                                                                                    maxIter = 50000,
-                                                                                    n_finish_tokens = 1000) %>% 
+map_features_binarized_trinuc32_freq_matched = trinuc_matching(map_features_binarized_trinuc32_freq,
+                                                               stoppingCriterion = 0.001,
+                                                               maxIter = 20000*length(map_features_binarized_trinuc32_freq),
+                                                               n_finish_tokens = 1000,
+                                                               max_fraction_removed_muts = 0.25) %>% 
   mutate(bin = gsub("AID_", "AID", bin)) %>% 
   separate(bin, into = map_features_binarized %>% 
                          select(-c(start, end, width, strand)) %>% 

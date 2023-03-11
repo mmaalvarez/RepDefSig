@@ -34,12 +34,36 @@ chromatin_features = ifelse(interactive(),
   read_csv(comment = "#")
 
 
-## load sim_pos_con (CONCATENATED chromosomes) from previous process
+## load ready_for_regression (ALL sep chromosomes) from previous process, and bind them
 sim_pos_con = ifelse(interactive(),
-                     yes = "ready_for_regression_chr21.tsv", #"../work/[[:alnum:]][[:alnum:]]/*/map_features_chr21.tsv",
-                     no = args[3]) %>% 
-  fread %>% 
-  as_tibble
+                yes = lapply(list(c(#Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/ready_for_regression_chr1.tsv")[1],
+                                    Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/ready_for_regression_chr2.tsv")[1],
+                                    Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/ready_for_regression_chr3.tsv")[1],
+                                    #Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/ready_for_regression_chr4.tsv")[1],
+                                    #Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/ready_for_regression_chr5.tsv")[1],
+                                    #Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/ready_for_regression_chr6.tsv")[1],
+                                    #Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/ready_for_regression_chr7.tsv")[1],
+                                    #Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/ready_for_regression_chr8.tsv")[1],
+                                    #Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/ready_for_regression_chr9.tsv")[1],
+                                    #Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/ready_for_regression_chr10.tsv")[1],
+                                    Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/ready_for_regression_chr11.tsv")[1],
+                                    Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/ready_for_regression_chr12.tsv")[1],
+                                    #Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/ready_for_regression_chr13.tsv")[1],
+                                    Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/ready_for_regression_chr14.tsv")[1],
+                                    Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/ready_for_regression_chr15.tsv")[1],
+                                    #Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/ready_for_regression_chr16.tsv")[1],
+                                    Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/ready_for_regression_chr17.tsv")[1],
+                                    Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/ready_for_regression_chr18.tsv")[1],
+                                    #Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/ready_for_regression_chr19.tsv")[1],
+                                    Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/ready_for_regression_chr20.tsv")[1],
+                                    Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/ready_for_regression_chr21.tsv")[1],
+                                    Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/ready_for_regression_chr22.tsv")[1],
+                                    Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/ready_for_regression_chrX.tsv")[1]
+                )),
+                read_tsv),
+                no = lapply(list(args[-(1:2)]), read_tsv)) %>%
+  Reduce(function(x, y) bind_rows(x, y), .)
+
 
 simulated_mutcount_colname = names(sim_pos_con)[1]
 

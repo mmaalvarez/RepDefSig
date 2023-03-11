@@ -64,7 +64,7 @@ colnames(offset)[1] = "mb_domain"
 
 ## load map_features (SINGLE chromosome) from 2nd process
 dfleft = ifelse(interactive(),
-                yes = Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/map_features_chr21.tsv"),
+                yes = Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/map_features_chr22.tsv"),
                 no = args[6]) %>% 
   fread %>% as_tibble %>% 
   rename("chrom" = "seqnames")
@@ -134,64 +134,72 @@ for(control_sample in control_samples){
   dfright = read_csv(existing_file) %>%
     select(chr, start, end, tri) %>% 
     rename("chrom" = "chr")  %>% 
-    filter(chrom == chromosome) %>%
-    mutate(mut_id = paste0("mut_", row_number()))
-  gc()
-
-  ## map chromatin features
-  merged = dfright %>%
+    filter(chrom == chromosome) %>% 
+    mutate(mut_id = paste0("mut_", row_number())) %>%
     # NEW keep SNVs in good mappability regions
     bed_intersect(good_mappability_regions, suffix = c("_dfright", "_crg75")) %>% 
     select(c("chrom", contains("_dfright"))) %>% 
-    rename_all(~str_replace_all(., "_dfleft|_dfright", "")) %>%
-    # now intersect with dfleft
-    bed_intersect(dfleft, suffix = c("_dfright", "_dfleft")) %>%
-    select(-c(contains("chrom"), contains("start_"), contains("end_"), contains("width_"), contains("strand_"))) %>%
-    # remove the "dleft" and "dright" parts of the column names
-    rename_all(~str_replace_all(., "_dfleft|_dfright", "")) %>%
-    # combine chromatin features (although there should typically be only RepliSeq)
-    unite("mb_domain", contains(chromatin_features$name), sep = "_") %>% 
-    # binarize weighted average DNA repair value by being lower or larger than the across-genome median
-    rowwise %>% 
-    mutate_at(vars(contains(match = dnarep_marks$name)),
-              function(x){var_name = rlang::as_label(substitute(x))
-              ifelse(!is.na(suppressWarnings(as.numeric(filter(median_scores, dnarep_mark == var_name)$median_score))),
-                     # it's numeric score, binarize as low/high
-                     yes = ifelse(x <= as.numeric(filter(median_scores, dnarep_mark == var_name)$median_score),
-                                  yes = "low",
-                                  no = "high"),
-                     # it's factor, leave as is
-                     no = x)}) %>% 
-    # dna rep mark levels as ordered factors
-    mutate_at(vars(contains(match = dnarep_marks$name)),
-              ~if(unique(.)[1] %in% c('AID_target', 'bgGenome')){
-                factor(., ordered = T, levels = c('AID_target', 'bgGenome')) # higher mut rates --> baseline
-              }else{
-                factor(., ordered = T, levels = c('low', 'high'))}) %>% # baseline --> lower mut rates
-    ### mut count
-    select(-mut_id) %>% 
-    table %>%
-    as.data.frame %>%
-    rename("mutcount" = "Freq") %>% 
-    # add offset (table) to have 0 muts in the non-existing combinations...
-    merge(offset, all = T) %>%
-    replace_na(list(mutcount = 0)) %>% 
-    relocate(mutcount) %>% 
-    # ... but not really using the actual offset column at this point
-    select(-log_freq_trinuc32) %>% 
-    mutate("control_sample" = control_sample)
+    rename_all(~str_replace_all(., "_dfleft|_dfright", ""))
   
-  if(nrow(merged) == 0){
-    stop("ERROR - Empty 'merged' table: probably 'good_mappability_regions' has removed all SNVs for this CONTROL sample! Exiting...\n")
+  ### if there are mutations at this chromosome, map chromatin features
+  if(length(rownames(dfright)) >= 1){
+
+    ## map chromatin features
+    merged = dfright %>%
+      # now intersect with dfleft
+      bed_intersect(dfleft, suffix = c("_dfright", "_dfleft")) %>%
+      select(-c(contains("chrom"), contains("start_"), contains("end_"), contains("width_"), contains("strand_"))) %>%
+      # remove the "dleft" and "dright" parts of the column names
+      rename_all(~str_replace_all(., "_dfleft|_dfright", "")) %>%
+      # combine chromatin features (although there should typically be only RepliSeq)
+      unite("mb_domain", contains(chromatin_features$name), sep = "_") %>% 
+      # binarize weighted average DNA repair value by being lower or larger than the across-genome median
+      rowwise %>% 
+      mutate_at(vars(contains(match = dnarep_marks$name)),
+                function(x){var_name = rlang::as_label(substitute(x))
+                ifelse(!is.na(suppressWarnings(as.numeric(filter(median_scores, dnarep_mark == var_name)$median_score))),
+                       # it's numeric score, binarize as low/high
+                       yes = ifelse(x <= as.numeric(filter(median_scores, dnarep_mark == var_name)$median_score),
+                                    yes = "low",
+                                    no = "high"),
+                       # it's factor, leave as is
+                       no = x)}) %>% 
+      # dna rep mark levels as ordered factors
+      mutate_at(vars(contains(match = dnarep_marks$name)),
+                ~if(unique(.)[1] %in% c('AID_target', 'bgGenome')){
+                  factor(., ordered = T, levels = c('AID_target', 'bgGenome')) # higher mut rates --> baseline
+                }else{
+                  factor(., ordered = T, levels = c('low', 'high'))}) %>% # baseline --> lower mut rates
+      ### mut count
+      select(-mut_id) %>% 
+      table %>%
+      as.data.frame %>%
+      rename("mutcount" = "Freq") %>% 
+      # add offset (table) to have 0 muts in the non-existing combinations...
+      merge(offset, all = T) %>%
+      replace_na(list(mutcount = 0)) %>% 
+      relocate(mutcount) %>% 
+      # ... but not really using the actual offset column at this point
+      select(-log_freq_trinuc32) %>% 
+      mutate("control_sample" = control_sample)
+    
+    if(nrow(merged) == 0){
+      stop("ERROR - Empty 'merged' table: probably 'good_mappability_regions' has removed all SNVs for this CONTROL sample! Exiting...\n")
+    }
+    
+    ### append to control_samples_table if this exists, otherwise create it
+    if(exists("control_samples_table")){
+      control_samples_table = bind_rows(control_samples_table, merged)
+    }else{
+      control_samples_table = merged
+    }
+    rm(merged)
+    
+  } else {
+    
+    cat(sprintf("WARNING: Sample %s does not have mutations at %s, so it will not be used for creating the 'baseline sample' for this chromosome...\n", control_sample, chromosome))
   }
   
-  ### append to control_samples_table if this exists, otherwise create it
-  if(exists("control_samples_table")){
-    control_samples_table = bind_rows(control_samples_table, merged)
-  }else{
-    control_samples_table = merged
-  }
-  rm(merged)
   gc()
 }
 
@@ -250,4 +258,4 @@ sim_pos_con = baseline_sample %>%
 gc()
 
 
-write_tsv(sim_pos_con, paste0("ready_for_regression_", chromosome, ".tsv"))
+write_tsv(sim_pos_con, paste0("ready_for_regression_sim_pos_con_", chromosome, ".tsv"))
