@@ -21,8 +21,32 @@ conflict_prefer("expand", "tidyr")
 args = commandArgs(trailingOnly=TRUE)
 
 map_features_binarized = ifelse(interactive(),
-                                yes = lapply("map_features_binarized_chr21.tsv", read_tsv),
-                                no = lapply(args, read_tsv)) %>%
+                                yes = lapply(list(c(
+                                  #Sys.glob(paste0("../work/[[:alnum:]][[:alnum:]]/*/map_features_binarized_chr1.tsv"))[1],
+                                  #Sys.glob(paste0("../work/[[:alnum:]][[:alnum:]]/*/map_features_binarized_chr2.tsv"))[1],
+                                  #Sys.glob(paste0("../work/[[:alnum:]][[:alnum:]]/*/map_features_binarized_chr3.tsv"))[1],
+                                  #Sys.glob(paste0("../work/[[:alnum:]][[:alnum:]]/*/map_features_binarized_chr4.tsv"))[1],
+                                  #Sys.glob(paste0("../work/[[:alnum:]][[:alnum:]]/*/map_features_binarized_chr5.tsv"))[1],
+                                  #Sys.glob(paste0("../work/[[:alnum:]][[:alnum:]]/*/map_features_binarized_chr6.tsv"))[1],
+                                  #Sys.glob(paste0("../work/[[:alnum:]][[:alnum:]]/*/map_features_binarized_chr7.tsv"))[1],
+                                  #Sys.glob(paste0("../work/[[:alnum:]][[:alnum:]]/*/map_features_binarized_chr8.tsv"))[1],
+                                  #Sys.glob(paste0("../work/[[:alnum:]][[:alnum:]]/*/map_features_binarized_chr9.tsv"))[1],
+                                  #Sys.glob(paste0("../work/[[:alnum:]][[:alnum:]]/*/map_features_binarized_chr10.tsv"))[1],
+                                  #Sys.glob(paste0("../work/[[:alnum:]][[:alnum:]]/*/map_features_binarized_chr11.tsv"))[1],
+                                  #Sys.glob(paste0("../work/[[:alnum:]][[:alnum:]]/*/map_features_binarized_chr12.tsv"))[1],
+                                  #Sys.glob(paste0("../work/[[:alnum:]][[:alnum:]]/*/map_features_binarized_chr13.tsv"))[1],
+                                  #Sys.glob(paste0("../work/[[:alnum:]][[:alnum:]]/*/map_features_binarized_chr14.tsv"))[1],
+                                  #Sys.glob(paste0("../work/[[:alnum:]][[:alnum:]]/*/map_features_binarized_chr15.tsv"))[1],
+                                  #Sys.glob(paste0("../work/[[:alnum:]][[:alnum:]]/*/map_features_binarized_chr16.tsv"))[1],
+                                  #Sys.glob(paste0("../work/[[:alnum:]][[:alnum:]]/*/map_features_binarized_chr17.tsv"))[1],
+                                  #Sys.glob(paste0("../work/[[:alnum:]][[:alnum:]]/*/map_features_binarized_chr18.tsv"))[1],
+                                  #Sys.glob(paste0("../work/[[:alnum:]][[:alnum:]]/*/map_features_binarized_chr19.tsv"))[1],
+                                  #Sys.glob(paste0("../work/[[:alnum:]][[:alnum:]]/*/map_features_binarized_chr20.tsv"))[1],
+                                  Sys.glob(paste0("../work/[[:alnum:]][[:alnum:]]/*/map_features_binarized_chr21.tsv"))[1],
+                                  Sys.glob(paste0("../work/[[:alnum:]][[:alnum:]]/*/map_features_binarized_chr22.tsv"))[1])),
+                                  #Sys.glob(paste0("../work/[[:alnum:]][[:alnum:]]/*/map_features_binarized_chrX.tsv"))[1])),
+                                  read_tsv),
+                                no = lapply(list(args), read_tsv)) %>%
   Reduce(function(x, y) bind_rows(x, y), .) 
 
 gc()
@@ -32,8 +56,6 @@ gc()
 
 offset = map_features_binarized %>%
   # sum up ACROSS ALL MATCHED trinuc32 frequencies within repliseq-dnamarks profile; add a dummy count; and log
-  rename("chrom" = "seqnames") %>% 
-  select(-chrom) %>% 
   mutate(log_freq_trinuc32 = log(rowSums(select(., matches("^[A,C,G,T][C,T][A,C,G,T]$"))) + 1)) %>% 
   # RepliSeq == 0 has only NNNNNN.. sequences, so no trinucs are found.. so remove Repliseq==0 bin
   filter(RepliSeq != 0) %>% 
@@ -63,7 +85,6 @@ if(!is.null(empty_offset$AID_regions)){
 }
 
 offset = merge(offset, empty_offset, all = T) %>% 
-  replace_na(list(log_freq_trinuc32 = 0)) %>% 
-  rename("mb_domain" = "RepliSeq")
+  replace_na(list(log_freq_trinuc32 = 0))
 
 write_tsv(offset, "offset.tsv")

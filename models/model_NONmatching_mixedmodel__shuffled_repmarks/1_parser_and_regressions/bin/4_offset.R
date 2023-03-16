@@ -21,8 +21,32 @@ conflict_prefer("expand", "tidyr")
 args = commandArgs(trailingOnly=TRUE)
 
 map_features_binarized = ifelse(interactive(),
-                                yes = lapply("../work/b0/0125c17277870afcb86aaab4c93782/map_features_binarized_chr21.tsv", read_tsv),
-                                no = lapply(args, read_tsv)) %>%
+                                yes = lapply(list(c(
+                                  Sys.glob(paste0("../work/[[:alnum:]][[:alnum:]]/*/map_features_binarized_chr1.tsv")),
+                                  Sys.glob(paste0("../work/[[:alnum:]][[:alnum:]]/*/map_features_binarized_chr2.tsv")),
+                                  Sys.glob(paste0("../work/[[:alnum:]][[:alnum:]]/*/map_features_binarized_chr3.tsv")),
+                                  Sys.glob(paste0("../work/[[:alnum:]][[:alnum:]]/*/map_features_binarized_chr4.tsv")),
+                                  Sys.glob(paste0("../work/[[:alnum:]][[:alnum:]]/*/map_features_binarized_chr5.tsv")),
+                                  Sys.glob(paste0("../work/[[:alnum:]][[:alnum:]]/*/map_features_binarized_chr6.tsv")),
+                                  Sys.glob(paste0("../work/[[:alnum:]][[:alnum:]]/*/map_features_binarized_chr7.tsv")),
+                                  Sys.glob(paste0("../work/[[:alnum:]][[:alnum:]]/*/map_features_binarized_chr8.tsv")),
+                                  Sys.glob(paste0("../work/[[:alnum:]][[:alnum:]]/*/map_features_binarized_chr9.tsv")),
+                                  Sys.glob(paste0("../work/[[:alnum:]][[:alnum:]]/*/map_features_binarized_chr10.tsv")),
+                                  Sys.glob(paste0("../work/[[:alnum:]][[:alnum:]]/*/map_features_binarized_chr11.tsv")),
+                                  Sys.glob(paste0("../work/[[:alnum:]][[:alnum:]]/*/map_features_binarized_chr12.tsv")),
+                                  Sys.glob(paste0("../work/[[:alnum:]][[:alnum:]]/*/map_features_binarized_chr13.tsv")),
+                                  Sys.glob(paste0("../work/[[:alnum:]][[:alnum:]]/*/map_features_binarized_chr14.tsv")),
+                                  Sys.glob(paste0("../work/[[:alnum:]][[:alnum:]]/*/map_features_binarized_chr15.tsv")),
+                                  Sys.glob(paste0("../work/[[:alnum:]][[:alnum:]]/*/map_features_binarized_chr16.tsv")),
+                                  Sys.glob(paste0("../work/[[:alnum:]][[:alnum:]]/*/map_features_binarized_chr17.tsv")),
+                                  Sys.glob(paste0("../work/[[:alnum:]][[:alnum:]]/*/map_features_binarized_chr18.tsv")),
+                                  Sys.glob(paste0("../work/[[:alnum:]][[:alnum:]]/*/map_features_binarized_chr19.tsv")),
+                                  Sys.glob(paste0("../work/[[:alnum:]][[:alnum:]]/*/map_features_binarized_chr20.tsv")),
+                                  Sys.glob(paste0("../work/[[:alnum:]][[:alnum:]]/*/map_features_binarized_chr21.tsv")),
+                                  Sys.glob(paste0("../work/[[:alnum:]][[:alnum:]]/*/map_features_binarized_chr22.tsv")),
+                                  Sys.glob(paste0("../work/[[:alnum:]][[:alnum:]]/*/map_features_binarized_chrX.tsv")))),
+                                  read_tsv),
+                                no = lapply(list(args), read_tsv)) %>%
   Reduce(function(x, y) bind_rows(x, y), .) 
 
 gc()
@@ -82,12 +106,15 @@ empty_offset = data.frame(matrix(ncol = length(names(offset)))) %>%
   merge(col_tri, all = T) %>% 
   relocate(tri, .after = last_col()) %>% 
   expand(!!! syms(names(offset)[!str_detect(names(offset), "log_freq_trinuc32")])) %>%
-  drop_na %>% 
-  mutate(AID_regions = gsub("high", unique(offset$AID_regions)[1], AID_regions),
-         AID_regions = gsub("low", unique(offset$AID_regions)[2], AID_regions))
+  drop_na
+
+if(!is.null(empty_offset$AID_regions)){
+  empty_offset = empty_offset %>% 
+    mutate(AID_regions = gsub("low", "AID_target", AID_regions),
+           AID_regions = gsub("high", "bgGenome", AID_regions))
+}
 
 offset = merge(offset, empty_offset, all = T) %>% 
   replace_na(list(log_freq_trinuc32 = 0))
 
-# for 9 binary dna marks × 6 RT bins × 32 NC|TN trinuc32 == XXX --> × 3 AGT(C) == XXX rows
 write_tsv(offset, "offset.tsv")

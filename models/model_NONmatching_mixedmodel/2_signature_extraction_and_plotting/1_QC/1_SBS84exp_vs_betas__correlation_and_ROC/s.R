@@ -1,5 +1,12 @@
 library(tidyverse)
 library(pROC)
+library("conflicted")
+conflict_prefer("filter", "dplyr")
+conflict_prefer("rename", "dplyr")
+conflict_prefer("select", "dplyr")
+conflict_prefer("map", "purrr")
+conflict_prefer("extract", "magrittr")
+conflict_prefer("Position", "ggplot2")
 
 
 ## name conversion tables 
@@ -62,21 +69,8 @@ reg_coeffs_repdefsig = read_tsv("../../../1_parser_and_regressions/res/results.t
                             sample_id2,
                             sample_id)) 
 
-### NOT USED (these are averaged iPSC control samples -which then have artificially increased mut burden-, so difficult to assign SBS84 exposures as these would differ? maybe not so much and could be averaged -as they are cell line clones-, but for the moment not using them) add simulated controls
-# ground_truth_SBS84_exposures_controls_nikzainal = read_tsv("")
-# simulated_controls = read_tsv("../../../1_parser_and_regressions/res/simulated_positive_controls.tsv") %>% 
-#   # keep only sim controls with inflated mut rates for AID
-#   filter(str_detect(sample_id, "AID_regions")) %>% 
-#   dplyr::select(c("sample_id", contains("AID_regions"))) %>% 
-#   rename_with(~str_replace(., '_AID_regions.*', '')) %>% 
-#   mutate(source = "Simulated high mut. burden (Nik-Zainal iPSC controls)",
-#          sample_id2 = gsub(".*-", "", sample_id)) %>% 
-#   left_join(ground_truth_SBS84_exposures_controls_nikzainal) %>% 
-#   dplyr::select(source, sample_id, sample_id2, SNVs_AIDregions, SNVs_nonAIDregions, `SBS84 raw exposure`, `SBS84 normalized exposure`, estimate, conf.low, conf.high)
-
 SBS84exposures_regcoeffs = left_join(ground_truth_SBS84_exposures, reg_coeffs_repdefsig) %>% 
   relocate(sample_id2, .after = sample_id) %>%
-  #bind_rows(simulated_controls) %>% 
   arrange(desc(`SBS84 raw exposure`)) %>% 
   rowwise() %>% 
   # discretize Model prediction: if estimate's CI95% is BELOW 0 (regression is ref:AID_target vs. alt:bgGenome) and estimate is lower than estimates' median, there is AID SHM
@@ -155,7 +149,6 @@ ggsave("MW_plot_SBS84_raw_exposures_log10_no1outlier.jpg",
 ### Exploratory plot
 
 ## NEW add controls (non-lymphoid tumor SBS84 exposures)
-
 nonlymphoid = read_tsv("/g/strcombio/fsupek_cancer3/malvarez/WGS_tumors/somatic_variation/TCGA_PCAWG_Hartwig_CPTAC_POG_MMRFCOMMPASS/AID_SHM/5_non_lymphoid_controls/3_extract_SBS84__sort_AID_vs_nonAID_samples/nonlymphoid_samples_SBS84_exposure_K10.tsv") %>% 
   separate(Sample, into = c("source", "sample_id"), sep = "_", extra = "merge") %>% 
   mutate(sample_id = gsub(".*_", "", sample_id),
@@ -166,8 +159,7 @@ nonlymphoid = read_tsv("/g/strcombio/fsupek_cancer3/malvarez/WGS_tumors/somatic_
          `Model prediction` = "Non-lymphoid tumors",
          group = "Non-lymphoid tumors") %>% 
   rename("SBS84 raw exposure" = "SBS84_raw_exp",
-         "SBS84 normalized exposure" = "SBS84_norm_exp") %>% 
-  select(names(SBS84exposures_regcoeffs))
+         "SBS84 normalized exposure" = "SBS84_norm_exp")
 
 SBS84exposures_regcoeffs_controls = SBS84exposures_regcoeffs %>% 
   bind_rows(nonlymphoid)
@@ -175,28 +167,38 @@ SBS84exposures_regcoeffs_controls = SBS84exposures_regcoeffs %>%
 write_tsv(SBS84exposures_regcoeffs_controls, "SBS84exposures_regcoeffs.tsv")
 writexl::write_xlsx(SBS84exposures_regcoeffs_controls, "SBS84exposures_regcoeffs.xlsx")
 
-exploratory_plot = ggplot(SBS84exposures_regcoeffs_controls %>% 
-         pivot_longer(cols = starts_with("SNVs_"), names_to = "Genomic region", values_to = "SNVs") %>% 
-         mutate(`Genomic region` = gsub("SNVs_", "", `Genomic region`),
-                `Genomic region` = gsub("AID", "AID target ", `Genomic region`),
-                `Genomic region` = gsub("non", "non ", `Genomic region`),
-                `Genomic region` = factor(`Genomic region`, ordered = T, levels = c("non AID target regions", 
-                                                                                    "AID target regions"))),
-       aes(x = `SBS84 raw exposure`,
-           y = `SNVs`)) +
-  scale_x_sqrt() +
-  scale_y_sqrt() +
-  # coord_cartesian(xlim = c(1, max(SBS84exposures_regcoeffs_controls$`SBS84 raw exposure`)),
-  #                 ylim = c(1, max(SBS84exposures_regcoeffs_controls$SNVs_nonAIDregions))) +
-  geom_line(aes(group = `SBS84 raw exposure`),
+plot_table = SBS84exposures_regcoeffs_controls %>% 
+  pivot_longer(cols = starts_with("SNVs_"), names_to = "Genomic region", values_to = "SNVs") %>% 
+  mutate(`Genomic region` = gsub("SNVs_", "", `Genomic region`),
+         `Genomic region` = gsub("AID", "AID target ", `Genomic region`),
+         `Genomic region` = gsub("non", "non ", `Genomic region`),
+         `Genomic region` = factor(`Genomic region`, ordered = T, levels = c("non AID target regions", 
+                                                                             "AID target regions")),
+         ### WARNING -- ADD 2.220446e-16 SNV to a few non-lymphoid that have 0 SNVs, so log10(SNVs) != Inf
+         SNVs = ifelse(group == "Non-lymphoid tumors" & SNVs == 0,
+                       2.220446e-16,
+                       SNVs))
+exploratory_plot = ggplot(plot_table,
+                          aes(x = `SBS84 raw exposure`,
+                              y = `SNVs`)) +
+  scale_x_log10() +
+  scale_y_log10() +
+  ### WARNING hide i)in x axis SBS84 raw exposure<1 (mostly non-lymphoid, a few lymphoid), and ii)in y axis the few non-lymphoid that have 0 SNVs
+  ### also in x axis, SBS84 raw exposures > max SBS84 raw exposure in "Lymphoid tumors"
+  coord_cartesian(xlim = c(1, filter(plot_table, group == "Lymphoid tumors") %>% pull(`SBS84 raw exposure`) %>% max),
+                  ylim = c(1, max(plot_table$SNVs))) +
+  geom_line(aes(group = sample_id),
             alpha = 0.5,
             col = "darkgray",
             linetype = "dashed") +
-  geom_point(aes(color = `Genomic region`,
-                 shape = `Model prediction`),
+  geom_point(aes(color = `Genomic region` #,
+                 #shape = `Model prediction`
+                 ),
              size = 3,
              alpha = 0.8) +
-  # quadratic
+  scale_color_manual(values = c("blue", "red")) + #, "gray")) +
+  #scale_shape_manual(values = c(4, 19, 8)) +
+  ## quadratic
   stat_smooth(aes(group = `Genomic region`),
               method = "lm",
               formula = y ~ poly(x, degree=2), size=1, col="black") +
@@ -206,17 +208,14 @@ exploratory_plot = ggplot(SBS84exposures_regcoeffs_controls %>%
                             label = ..eq.label..),
                         size = 7,
                         formula = y ~ poly(x, degree=2)) +
-  scale_color_manual(values = c("blue", "red", "gray")) +
-  scale_shape_manual(values = c(4, 19, 8)) +
   facet_wrap(facets = vars(group),
              nrow = 2,
              scales = "free") +
-  xlab("SBS84 raw exposure\n(sqrt scale)") +
-  ylab("SNVs (sqrt scale)") +
+  xlab("SBS84 raw exposure (log10 scale)\nx<1 & x>max(lymphoid tumors) hidden") +
+  ylab("SNVs (log10 scale)") +
   theme_bw() +
-  ggtitle("Lymphoid samples") +
-  theme(#legend.title = element_blank(),
-        #legend.position = "top",
+  theme(legend.title = element_blank(),
+        legend.position = "top",
         text = element_text(size = 25))
 ggsave("exploratory_plot.jpg",
        plot = exploratory_plot,

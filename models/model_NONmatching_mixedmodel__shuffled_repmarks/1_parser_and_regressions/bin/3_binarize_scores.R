@@ -31,7 +31,7 @@ chromatin_features = ifelse(interactive(),
 
 # load raw-score feature map from previous process
 map_features = ifelse(interactive(),
-                      yes = "../work/67/2ffa9d1db5e0ed41abf08e1190cb1e/map_features_single_chr",
+                      yes = Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/map_features_chr21.tsv"),
                       no = args[3]) %>% 
   read_tsv()
 
@@ -40,16 +40,16 @@ chromosome = unique(map_features$seqnames)
 
 # load collected median_scores from 1st process
 median_scores = ifelse(interactive(),
-                       yes = lapply(list(c("../work/26/08b67aa330177901dc72e70df9cc6b/median_score_OGG1_GOx30_chipseq.tsv",
-                                           "../work/02/bd5527ea98ae2fbcb50d1c7947a0fb/median_score_OGG1_GOx60_chipseq.tsv",
-                                           "../work/fb/0c57088546769b3d33c5ce901bdda8/median_score_UV_XRseq_NHF1_PP64_1h_Rep1.tsv",
-                                           "../work/f2/acd0d55a2fb0d7a07260a120f0d01e/median_score_UV_XRseq_NHF1_CPD_1h.tsv",
-                                           "../work/d2/65d1e94a5015f7106d266899bae572/median_score_XRCC4.tsv",
-                                           "../work/58/2192db8e29c53114153463b867ce68/median_score_SETD2_control.tsv",
-                                           "../work/73/4d3c3f1693923f3808026f1194d58f/median_score_MSH6_control.tsv",
-                                           "../work/35/ba92f745984eec59ec4ca62cd3d2df/median_score_TP53_dauno_MOLM13.tsv",
-                                           "../work/db/db4afaf45c9ec6f18e486dc5dfcc87/median_score_TP53_dauno_K562.tsv",
-                                           "../work/fb/8caddf7603a8d872bd5df497010bea/median_score_AID_regions.tsv")), 
+                       yes = lapply(list(c(Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/median_score_OGG1_GOx30_chipseq.tsv")[1],
+                                           Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/median_score_OGG1_GOx60_chipseq.tsv")[1],
+                                           Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/median_score_UV_XRseq_NHF1_PP64_1h_Rep1.tsv")[1],
+                                           Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/median_score_UV_XRseq_NHF1_CPD_1h.tsv")[1],
+                                           Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/median_score_XRCC4.tsv")[1],
+                                           Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/median_score_SETD2_control.tsv")[1],
+                                           Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/median_score_MSH6_control.tsv")[1],
+                                           Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/median_score_TP53_dauno_K562.tsv")[1],
+                                           Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/median_score_TP53_dauno_MOLM13.tsv")[1],
+                                           Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/median_score_AID_regions.tsv")[1])), 
                                     read_tsv),
                        no = lapply(list(args[-(1:3)]), read_tsv)) %>%
   Reduce(function(x, y) bind_rows(x, y), .)
@@ -90,6 +90,7 @@ map_features_binarized_temp = map_features %>%
   relocate(features_with_character_levels, .after = last_col()) %>% 
   unite("metadata", !matches("seqnames|start|end|width|strand")) %>% 
   makeGRangesFromDataFrame(keep.extra.columns = T)
+rm(map_features) ; gc()
 
 ## collapse contiguous ranges if they have same metadata levels
 map_features_binarized_temp = unlist(reduce(split(map_features_binarized_temp, ~metadata)))
@@ -108,7 +109,7 @@ map_features_binarized = map_features_binarized_temp %>%
                       end+1,
                       end),
          width = end-start+1)
-gc()
+rm(map_features_binarized_temp) ; gc()
 
 
 # get sequence for each range
@@ -140,7 +141,7 @@ trinuc32_freq = trinucleotideFrequency(sequences) %>%
   as_tibble %>% 
   arrange(as.numeric(id)) %>% 
   select(-id)
-gc()
+rm(sequences) ; gc()
 
 # bind trinuc32 freqs to map_features_binarized
 map_features_binarized_trinuc32_freq = map_features_binarized %>% 
@@ -150,6 +151,6 @@ map_features_binarized_trinuc32_freq = map_features_binarized %>%
                ~sum(.)) %>% 
   mutate(chrom = chromosome) %>% 
   relocate(chrom)
-gc()
+rm(trinuc32_freq) ; rm(map_features_binarized) ; gc()
 
 write_tsv(map_features_binarized_trinuc32_freq, paste0("map_features_binarized_", chromosome, ".tsv"))

@@ -14,70 +14,29 @@ conflict_prefer("extract", "magrittr")
 conflict_prefer("reduce", "IRanges")
 
 
+# from command parameters
+args = commandArgs(trailingOnly=TRUE)
+
 # load utils.R (functions) -- only used here if trinucleotide matching
 if(interactive()){
-  source("../../../../bin/utils.R")
+  source("/g/strcombio/fsupek_data/users/malvarez/projects/RepDefSig/bin/utils.R")
 } else {
   source(args[1])
 }
 
-# from command parameters
-args = commandArgs(trailingOnly=TRUE)
-
 chromatin_features = ifelse(interactive(),
                             yes = "../input_lists/chromatin_features.csv",
-                            no = args[1]) %>%
+                            no = args[2]) %>%
   read_csv(comment = "#")
 
 
 ## load raw-score feature map from previous process
-if(interactive()){ ## if interactive, load all chromosomes obtained in the non-trinuc-matching model, as they can be reused in this trinuc-matching model
-  
-  # retrieve them
-  map_features_other_model = c(
-    # Sys.glob(paste0("../../../model_NONmatching_mixedmodel/1_parser_and_regressions/work/[[:alnum:]][[:alnum:]]/*/map_features_chr1.tsv")),
-    # Sys.glob(paste0("../../../model_NONmatching_mixedmodel/1_parser_and_regressions/work/[[:alnum:]][[:alnum:]]/*/map_features_chr2.tsv")),
-    # Sys.glob(paste0("../../../model_NONmatching_mixedmodel/1_parser_and_regressions/work/[[:alnum:]][[:alnum:]]/*/map_features_chr3.tsv")),
-    # Sys.glob(paste0("../../../model_NONmatching_mixedmodel/1_parser_and_regressions/work/[[:alnum:]][[:alnum:]]/*/map_features_chr4.tsv")),
-    # Sys.glob(paste0("../../../model_NONmatching_mixedmodel/1_parser_and_regressions/work/[[:alnum:]][[:alnum:]]/*/map_features_chr5.tsv")),
-    # Sys.glob(paste0("../../../model_NONmatching_mixedmodel/1_parser_and_regressions/work/[[:alnum:]][[:alnum:]]/*/map_features_chr6.tsv")),
-    # Sys.glob(paste0("../../../model_NONmatching_mixedmodel/1_parser_and_regressions/work/[[:alnum:]][[:alnum:]]/*/map_features_chr7.tsv")),
-    # Sys.glob(paste0("../../../model_NONmatching_mixedmodel/1_parser_and_regressions/work/[[:alnum:]][[:alnum:]]/*/map_features_chr8.tsv")),
-    # Sys.glob(paste0("../../../model_NONmatching_mixedmodel/1_parser_and_regressions/work/[[:alnum:]][[:alnum:]]/*/map_features_chr9.tsv")),
-    # Sys.glob(paste0("../../../model_NONmatching_mixedmodel/1_parser_and_regressions/work/[[:alnum:]][[:alnum:]]/*/map_features_chr10.tsv")),
-    # Sys.glob(paste0("../../../model_NONmatching_mixedmodel/1_parser_and_regressions/work/[[:alnum:]][[:alnum:]]/*/map_features_chr11.tsv")),
-    # Sys.glob(paste0("../../../model_NONmatching_mixedmodel/1_parser_and_regressions/work/[[:alnum:]][[:alnum:]]/*/map_features_chr12.tsv")),
-    # Sys.glob(paste0("../../../model_NONmatching_mixedmodel/1_parser_and_regressions/work/[[:alnum:]][[:alnum:]]/*/map_features_chr13.tsv")),
-    # Sys.glob(paste0("../../../model_NONmatching_mixedmodel/1_parser_and_regressions/work/[[:alnum:]][[:alnum:]]/*/map_features_chr14.tsv")),
-    # Sys.glob(paste0("../../../model_NONmatching_mixedmodel/1_parser_and_regressions/work/[[:alnum:]][[:alnum:]]/*/map_features_chr15.tsv")),
-    # Sys.glob(paste0("../../../model_NONmatching_mixedmodel/1_parser_and_regressions/work/[[:alnum:]][[:alnum:]]/*/map_features_chr16.tsv")),
-    # Sys.glob(paste0("../../../model_NONmatching_mixedmodel/1_parser_and_regressions/work/[[:alnum:]][[:alnum:]]/*/map_features_chr17.tsv")),
-    # Sys.glob(paste0("../../../model_NONmatching_mixedmodel/1_parser_and_regressions/work/[[:alnum:]][[:alnum:]]/*/map_features_chr18.tsv")),
-    # Sys.glob(paste0("../../../model_NONmatching_mixedmodel/1_parser_and_regressions/work/[[:alnum:]][[:alnum:]]/*/map_features_chr19.tsv")),
-    # Sys.glob(paste0("../../../model_NONmatching_mixedmodel/1_parser_and_regressions/work/[[:alnum:]][[:alnum:]]/*/map_features_chr20.tsv")),
-    Sys.glob(paste0("../../../model_NONmatching_mixedmodel/1_parser_and_regressions/work/[[:alnum:]][[:alnum:]]/*/map_features_chr21.tsv"))#,
-    # Sys.glob(paste0("../../../model_NONmatching_mixedmodel/1_parser_and_regressions/work/[[:alnum:]][[:alnum:]]/*/map_features_chr22.tsv")),
-    # Sys.glob(paste0("../../../model_NONmatching_mixedmodel/1_parser_and_regressions/work/[[:alnum:]][[:alnum:]]/*/map_features_chrX.tsv"))
-    )
-  
-  # load them
-  map_features_other_model_dataFiles = lapply(map_features_other_model,
-                                              read_tsv) ; gc()
-  # name them by their chromosome
-  for(dataFile in seq(1, length(map_features_other_model_dataFiles), 1)){
-    names(map_features_other_model_dataFiles)[[dataFile]] = unique(map_features_other_model_dataFiles[[dataFile]]$seqnames) ; gc()
-    } ; gc()
-  
-  # choose one chromosome
-  chromosome = "chr21"
-  map_features = map_features_other_model_dataFiles[[chromosome]]
-  
-  } else {
-    # if interactive, load just one chromosome at a time (in parallel with nextflow), from this model
-    map_features = read_tsv(args[2])
-    
-    chromosome = unique(map_features$seqnames)
-  }
+map_features = ifelse(interactive(),
+                      yes = Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/map_features_chr21.tsv"),
+                      no = args[3]) %>% 
+  read_tsv()
+
+chromosome = unique(map_features$seqnames)
 
 
 # load collected median_scores from 1st process
@@ -93,7 +52,7 @@ median_scores = ifelse(interactive(),
                                            Sys.glob("../../../model_NONmatching_mixedmodel/1_parser_and_regressions/work/[[:alnum:]][[:alnum:]]/*/median_score_TP53_dauno_MOLM13.tsv")[1],
                                            Sys.glob("../../../model_NONmatching_mixedmodel/1_parser_and_regressions/work/[[:alnum:]][[:alnum:]]/*/median_score_AID_regions.tsv")[1])), 
                                     read_tsv),
-                       no = lapply(list(args[-(1:2)]), read_tsv)) %>%
+                       no = lapply(list(args[-(1:3)]), read_tsv)) %>%
   Reduce(function(x, y) bind_rows(x, y), .)
 
 
@@ -113,7 +72,7 @@ features_with_character_levels = map_features %>%
 
 ## binarize weighted average DNA repair value by being lower or larger than the across-genome median
 
-map_features_binarized = map_features %>%
+map_features_binarized_temp = map_features %>%
   lazy_dt %>% 
   #### WARNING first do the average score at duplicated (start end) ranges, this is due to the (in some features) hg38-->hg19 lift dividing some ranges into 2 alternative ranges with the same score
   group_by_at(vars('seqnames', 'start', 'end', features_with_character_levels)) %>% 
@@ -135,9 +94,9 @@ map_features_binarized = map_features %>%
 rm(map_features) ; gc()
 
 ## collapse contiguous ranges if they have same metadata levels
-map_features_binarized = unlist(reduce(split(map_features_binarized, ~metadata)))
-mcols(map_features_binarized) = names(map_features_binarized)
-map_features_binarized = map_features_binarized %>% 
+map_features_binarized_temp = unlist(reduce(split(map_features_binarized_temp, ~metadata)))
+mcols(map_features_binarized_temp) = names(map_features_binarized_temp)
+map_features_binarized = map_features_binarized_temp %>% 
   as_tibble %>% 
   arrange(start) %>% 
   mutate(X = gsub("AID_", "AID ", X)) %>% 
@@ -151,7 +110,7 @@ map_features_binarized = map_features_binarized %>%
                       end+1,
                       end),
          width = end-start+1)
-gc()
+rm(map_features_binarized_temp) ; gc()
 
 
 # get sequence for each range
@@ -198,7 +157,7 @@ map_features_binarized_trinuc32_freq = map_features_binarized %>%
   column_to_rownames("bin") %>% 
   # remove "all-0-mut" rows (bins)
   filter(rowSums(.) >= 1)
-rm(trinuc32_freq) ; rm(map_features_binarized) ; gc()
+rm(trinuc32_freq) ; gc()
 
 ### trinuc matching
 map_features_binarized_trinuc32_freq_matched = trinuc_matching(map_features_binarized_trinuc32_freq,
@@ -211,6 +170,6 @@ map_features_binarized_trinuc32_freq_matched = trinuc_matching(map_features_bina
                          select(-c(start, end, width, strand)) %>% 
                          names) %>% 
   mutate_all(~gsub("AIDtarget", "AID_target", .))
-rm(map_features_binarized_trinuc32_freq) ; gc()
+rm(map_features_binarized_trinuc32_freq) ; rm(map_features_binarized) ; gc()
 
 write_tsv(map_features_binarized_trinuc32_freq_matched, paste0("map_features_binarized_", chromosome, ".tsv"))

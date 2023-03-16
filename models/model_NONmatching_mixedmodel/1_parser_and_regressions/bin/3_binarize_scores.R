@@ -90,6 +90,7 @@ map_features_binarized_temp = map_features %>%
   relocate(features_with_character_levels, .after = last_col()) %>% 
   unite("metadata", !matches("seqnames|start|end|width|strand")) %>% 
   makeGRangesFromDataFrame(keep.extra.columns = T)
+rm(map_features) ; gc()
 
 ## collapse contiguous ranges if they have same metadata levels
 map_features_binarized_temp = unlist(reduce(split(map_features_binarized_temp, ~metadata)))
@@ -108,7 +109,7 @@ map_features_binarized = map_features_binarized_temp %>%
                       end+1,
                       end),
          width = end-start+1)
-gc()
+rm(map_features_binarized_temp) ; gc()
 
 
 # get sequence for each range
@@ -140,7 +141,7 @@ trinuc32_freq = trinucleotideFrequency(sequences) %>%
   as_tibble %>% 
   arrange(as.numeric(id)) %>% 
   select(-id)
-gc()
+rm(sequences) ; gc()
 
 # bind trinuc32 freqs to map_features_binarized
 map_features_binarized_trinuc32_freq = map_features_binarized %>% 
@@ -150,6 +151,6 @@ map_features_binarized_trinuc32_freq = map_features_binarized %>%
                ~sum(.)) %>% 
   mutate(chrom = chromosome) %>% 
   relocate(chrom)
-gc()
+rm(trinuc32_freq) ; rm(map_features_binarized) ; gc()
 
 write_tsv(map_features_binarized_trinuc32_freq, paste0("map_features_binarized_", chromosome, ".tsv"))

@@ -93,7 +93,7 @@ map_features.into{map_features_for_binarize_scores; map_features_for_process5_1;
 
 process binarize_scores {
 
-    time = 6.hour
+    time = 8.hour
     memory = { (params.memory_process3 + 18*(task.attempt-1)).GB }
 
     input:

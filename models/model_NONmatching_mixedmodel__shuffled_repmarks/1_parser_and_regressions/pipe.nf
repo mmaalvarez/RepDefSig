@@ -290,7 +290,7 @@ process sim_pos_con {
 
     output:
     tuple val(name), val(mutation_foldinc), path("ready_for_regression_sim_pos_con_chr*_mutfoldinc*_*.tsv") into ready_for_regression_single_chromosome_sim_pos_con
-
+    
     """
     #!/usr/bin/env bash
 

@@ -1,11 +1,7 @@
 name,path
-OGG1_GOx30_chipseq,/g/strcombio/fsupek_data/users/malvarez/projects/RepDefSig/models/model_NONmatching_mixedmodel__shuffled_repmarks/1_parser_and_regressions/input_lists/shuffled_dnarep_marks/OGG1_GOx30_chipseq_shuffled_scores.bed
-OGG1_GOx60_chipseq,/g/strcombio/fsupek_data/users/malvarez/projects/RepDefSig/models/model_NONmatching_mixedmodel__shuffled_repmarks/1_parser_and_regressions/input_lists/shuffled_dnarep_marks/OGG1_GOx60_chipseq_shuffled_scores.bed
-UV_XRseq_NHF1_CPD_1h,/g/strcombio/fsupek_data/users/malvarez/projects/RepDefSig/models/model_NONmatching_mixedmodel__shuffled_repmarks/1_parser_and_regressions/input_lists/shuffled_dnarep_marks/UV_XRseq_NHF1_CPD_1h_shuffled_scores.bed
-UV_XRseq_NHF1_PP64_1h_Rep1,/g/strcombio/fsupek_data/users/malvarez/projects/RepDefSig/models/model_NONmatching_mixedmodel__shuffled_repmarks/1_parser_and_regressions/input_lists/shuffled_dnarep_marks/UV_XRseq_NHF1_PP64_1h_Rep1_shuffled_scores.bed
-MSH6_control,/g/strcombio/fsupek_data/users/malvarez/projects/RepDefSig/models/model_NONmatching_mixedmodel__shuffled_repmarks/1_parser_and_regressions/input_lists/shuffled_dnarep_marks/MSH6_control_shuffled_scores.bed
-SETD2_control,/g/strcombio/fsupek_data/users/malvarez/projects/RepDefSig/models/model_NONmatching_mixedmodel__shuffled_repmarks/1_parser_and_regressions/input_lists/shuffled_dnarep_marks/SETD2_control_shuffled_scores.bed
-XRCC4,/g/strcombio/fsupek_data/users/malvarez/projects/RepDefSig/models/model_NONmatching_mixedmodel__shuffled_repmarks/1_parser_and_regressions/input_lists/shuffled_dnarep_marks/XRCC4_shuffled_scores.bed
-TP53_dauno_K562,/g/strcombio/fsupek_data/users/malvarez/projects/RepDefSig/models/model_NONmatching_mixedmodel__shuffled_repmarks/1_parser_and_regressions/input_lists/shuffled_dnarep_marks/TP53_dauno_K562_shuffled_scores.bed
-TP53_dauno_MOLM13,/g/strcombio/fsupek_data/users/malvarez/projects/RepDefSig/models/model_NONmatching_mixedmodel__shuffled_repmarks/1_parser_and_regressions/input_lists/shuffled_dnarep_marks/TP53_dauno_MOLM13_shuffled_scores.bed
+OGG1_GOx30_chipseq,/g/strcombio/fsupek_cancer3/malvarez/chromatin_info/DNA_repair__protein_binding/DNA_repair/BER/OGG1/chipseq/bed_hg19/gaps_score0/hg19_GSM_CP-Sample_Flag-OGG1-GOX-30-1_gaps-to-score-0.bed	#			BER/OGG1/GOx30				chip-seq	.bed
+UV_XRseq_NHF1_CPD_1h,/g/strcombio/fsupek_cancer3/malvarez/chromatin_info/DNA_repair__protein_binding/DNA_repair/NER/UV/XR_seq/merged_strands/GSE67941_CPD1h_Merged_merged_strands.bw	#									NER/UV/						XR-seq		.bw
+MSH6_control,/g/strcombio/fsupek_cancer3/malvarez/chromatin_info/DNA_repair__protein_binding/DNA_repair/MMR/MSH6_SETD2_H3K36me3_guominli/2_fold_enrichment_vs_input/bedgraphs_fold_enrich/SRR13314132_sorted_FE.bdg	#		MMR/MSH6/control			chip-seq	.bedGraph
+XRCC4,/g/strcombio/fsupek_cancer3/malvarez/chromatin_info/DNA_repair__protein_binding/DNA_repair/DSBR/NHEJ/XRCC4_RAD51_53BP1/XRCC4_hg19_normalized.bw	#																	DSBR/XRCC4					chip-seq	.bw
+TP53_dauno_K562,/g/strcombio/fsupek_cancer3/malvarez/chromatin_info/DNA_repair__protein_binding/TP53/gaps_score0/GSM3781507_WT_KO_Dauno_coverage_gaps-to-score-0.bed	#													TP53/DNAdam_induced/K562	chip-seq	.bed
 AID_regions,/g/strcombio/fsupek_cancer3/malvarez/WGS_tumors/somatic_variation/TCGA_PCAWG_Hartwig_CPTAC_POG_MMRFCOMMPASS/AID_SHM/0_AID_regions/AID_regions.bed
