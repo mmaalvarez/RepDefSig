@@ -44,28 +44,28 @@ colnames(offset)[1] = "mb_domain"
 
 ## load ready_for_regression (ALL sep chromosomes) from previous process, and bind them
 merged = ifelse(interactive(),
-                yes = lapply(list(c(Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/ready_for_regression_chr1.tsv")[1],
+                yes = lapply(list(c(#Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/ready_for_regression_chr1.tsv")[1],
                                     #Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/ready_for_regression_chr2.tsv")[1],
                                     #Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/ready_for_regression_chr3.tsv")[1],
-                                    Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/ready_for_regression_chr4.tsv")[1],
-                                    Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/ready_for_regression_chr5.tsv")[1],
-                                    Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/ready_for_regression_chr6.tsv")[1],
-                                    Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/ready_for_regression_chr7.tsv")[1],
-                                    Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/ready_for_regression_chr8.tsv")[1],
-                                    Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/ready_for_regression_chr9.tsv")[1],
-                                    Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/ready_for_regression_chr10.tsv")[1],
+                                    #Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/ready_for_regression_chr4.tsv")[1],
+                                    #Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/ready_for_regression_chr5.tsv")[1],
+                                    #Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/ready_for_regression_chr6.tsv")[1],
+                                    #Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/ready_for_regression_chr7.tsv")[1],
+                                    #Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/ready_for_regression_chr8.tsv")[1],
+                                    #Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/ready_for_regression_chr9.tsv")[1],
+                                    #Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/ready_for_regression_chr10.tsv")[1],
                                     #Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/ready_for_regression_chr11.tsv")[1],
                                     #Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/ready_for_regression_chr12.tsv")[1],
-                                    Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/ready_for_regression_chr13.tsv")[1],
+                                    #Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/ready_for_regression_chr13.tsv")[1],
                                     #Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/ready_for_regression_chr14.tsv")[1],
                                     #Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/ready_for_regression_chr15.tsv")[1],
-                                    Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/ready_for_regression_chr16.tsv")[1],
+                                    #Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/ready_for_regression_chr16.tsv")[1],
                                     #Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/ready_for_regression_chr17.tsv")[1],
                                     #Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/ready_for_regression_chr18.tsv")[1],
-                                    Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/ready_for_regression_chr19.tsv")[1] #,
+                                    #Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/ready_for_regression_chr19.tsv")[1],
                                     #Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/ready_for_regression_chr20.tsv")[1],
-                                    #Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/ready_for_regression_chr21.tsv")[1],
-                                    #Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/ready_for_regression_chr22.tsv")[1],
+                                    Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/ready_for_regression_chr21.tsv")[1],
+                                    Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/ready_for_regression_chr22.tsv")[1] #,
                                     #Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/ready_for_regression_chrX.tsv")[1]
                 )),
                 read_tsv),
@@ -107,7 +107,7 @@ formula = paste0("mutcount ~ ",
 # stick to a generalized linear model for the negative binomial family
 cat(sprintf('Running regression...\n'))
 y = suppressWarnings(glm.nb(formula = formula, 
-                            data = sommut_dnarep_chromatin))
+                            data = sommut_tricount_dnarep_chromatin))
 
 ## parse output
 y_tidy = broom::tidy(y) %>%
@@ -123,9 +123,9 @@ y_tidy = broom::tidy(y) %>%
 gc()
 
 ## append features' coefficients and pvalues to metadata_sample
-results_sample = full_join(metadata_sample, y_tidy) %>%
+results_real_sample = full_join(metadata_sample, y_tidy) %>%
   relocate(sample_id) %>% 
   relocate(info1, info2, .before = theta)
 gc()
 
-write_tsv(results_sample, "results_sample.tsv")
+write_tsv(results_real_sample, "results_real_sample.tsv")
