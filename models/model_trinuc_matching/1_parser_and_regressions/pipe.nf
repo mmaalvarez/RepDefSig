@@ -127,6 +127,7 @@ process binarize_scores {
 }
 
 
+/*
 
 // calculate offset (log(#trinuc+1)) for each of the 32 N(C|T)N types (e.g. ACT) that exist in each RT×dnarepmarks combination, and could therefore be any A(C>D)T SNV
 
@@ -164,7 +165,6 @@ process offset {
 
 // the same offset_table is passed to 2 diff processes
 offset_table.into{offset_table_for_process5_2; offset_table_for_process6_1}
-
 
 
 
@@ -351,3 +351,4 @@ process sim_pos_con_concat_chr_run_regression {
 sim_pos_con
     .collectFile(name: 'res/simulated_positive_controls.tsv', keepHeader: true)
     .println { "Regression results for simulated positive control samples saved in res/simulated_positive_controls.tsv" }
+*/

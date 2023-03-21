@@ -142,4 +142,40 @@ if(nrow(merged) == 0){
 }
 
 
+
+NEWWWW %>% 
+  # prepare for matching/adjusting
+  unite(col = "bin", !matches("^[A,C,T,G][C,T][A,C,T,G]$")) %>% 
+  column_to_rownames("bin") %>% 
+  # remove "all-0-mut" rows (bins)
+  filter(rowSums(.) >= 1)
+rm(trinuc32_freq) ; gc()
+
+if(trinuc_mode == "matching"){
+
+  ### trinuc matching
+
+  merged = trinuc_matching(map_features_binarized_trinuc32_freq,
+                           stoppingCriterion = 0.001,
+                           maxIter = 20000*length(map_features_binarized_trinuc32_freq),
+                           n_finish_tokens = 1000,
+                           max_fraction_removed_muts = 0.25) %>% 
+    mutate(bin = gsub("AID_", "AID", bin)) %>% 
+    separate(bin, into = map_features_binarized %>% 
+                           select(-c(start, end, width, strand)) %>% 
+                           names) %>% 
+    mutate_all(~gsub("AIDtarget", "AID_target", .))
+
+    } else if(trinuc_mode == "adjustment"){
+
+    ### trinuc adjustment
+
+    merged = "bla"
+
+    } else {
+
+      ## no trinuc modification
+    }
+
+
 write_tsv(merged, paste0("ready_for_regression_", chromosome, ".tsv"))

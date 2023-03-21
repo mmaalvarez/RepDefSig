@@ -29,7 +29,8 @@ chromatin_features = ifelse(interactive(),
                             no = args[2]) %>%
   read_csv(comment = "#")
 
-# load raw-score feature map from previous process
+
+## load raw-score feature map from previous process
 map_features = ifelse(interactive(),
                       yes = Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/map_features_chr21.tsv"),
                       no = args[3]) %>% 
@@ -151,6 +152,7 @@ map_features_binarized_trinuc32_freq = map_features_binarized %>%
                ~sum(.)) %>% 
   mutate(chrom = chromosome) %>% 
   relocate(chrom)
+  
 rm(trinuc32_freq) ; rm(map_features_binarized) ; gc()
 
 write_tsv(map_features_binarized_trinuc32_freq, paste0("map_features_binarized_", chromosome, ".tsv"))

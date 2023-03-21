@@ -144,7 +144,7 @@ parse_feature_files = function(features_table,
 # takes mutation count dataframe with N rows (1 per genomic bin, e.g. RT6-OGG1low-UVhigh-...) × 32 trinuc type columns
 # removes mut counts, so that mutated trinucleotide proportions are "matched" across bins
 # modified from marina/fran's
-# imported by 3_binarize_scores.R
+# can be imported by 5.1 and 6.1
 
 trinuc_matching = function(counts, 
                            stoppingCriterion = 0.01, # desired Euclidean score (max. distance between any bin's trinuc frequencies and all-bin-average trinuc frequencies)
@@ -291,12 +291,6 @@ trinuc_matching = function(counts,
     ###############################
     ### subtract mutations from a trinuc of the offender bin
     
-    ## get worst col (the trinuc in the offender row with highest freq. distance from the mean freqs.)
-    # this is the one to be used to calculate how many muts to remove from correctableCol
-    worstColIndex = which.max(abs(diffs))  # this is sometimes the same as the correctable col
-    worstCol = names(worstColIndex)
-    worstColCounts = select(offender_row, all_of(worstCol))
-    
     ### note this adjustment (subtraction) is too conservative, but by iterating it should converge to the right value
     subtractThis = as.numeric( round( diffs[correctableColIndex] * sum(offender_row) ) )
     
@@ -334,4 +328,16 @@ trinuc_matching = function(counts,
   
   ## return final counts_mineuclidean table
   return(rownames_to_column(counts, "bin"))
+}
+
+
+
+###############################################################################
+## ALTERNATIVE to MATCHING: adjustment based on dividing # mutated trinucleotides by the total (# mutated + # non-mutated) per bin, sum fractions, and multiply by the original total # mutations in that bin
+# faster (no iterations)
+# should keep signal (ratios of mutations between bins) less altered
+# can be imported by 5.1 and 6.1
+
+trinuc_adj = function(counts){
+  
 }
