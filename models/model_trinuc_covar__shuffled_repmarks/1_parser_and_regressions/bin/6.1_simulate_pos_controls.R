@@ -240,9 +240,9 @@ sim_pos_con = baseline_sample %>%
   # collapse bins
   summarise(sum_mean_mutcount = sum(mean_mutcount)) %>% 
   # increase mutations in bins that are i) "high" repair mark abundance -to approach the baseline-, or ii) "AID_target" -to simulate an AID-SHM sample-, by "mutfoldinc" times
-  mutate("simulated_mutcount_{mutfoldinc}fold" := ifelse(get(dnarep_mark_simulate) %in% c("high", "AID_target"),
-                                                               yes = ceiling(sum_mean_mutcount * mutfoldinc),
-                                                               no = ceiling(sum_mean_mutcount))) %>% 
+  mutate("simulated_mutcount_x-fold" := ifelse(get(dnarep_mark_simulate) %in% c("high", "AID_target"),
+                                               yes = ceiling(sum_mean_mutcount * mutfoldinc),
+                                               no = ceiling(sum_mean_mutcount))) %>% 
   # here we do leave the offset column
   merge(offset, all = T) %>% 
   select(starts_with("simulated_mutcount"),
@@ -253,8 +253,9 @@ sim_pos_con = baseline_sample %>%
          freq_trinuc32) %>% 
   ungroup %>% 
   as_tibble %>% 
-  mutate(simulated_mark = dnarep_mark_simulate)
-
+  mutate(chr = chromosome,
+         `mutfoldinc` = mutfoldinc,
+         simulated_mark = dnarep_mark_simulate)
 gc()
 
 

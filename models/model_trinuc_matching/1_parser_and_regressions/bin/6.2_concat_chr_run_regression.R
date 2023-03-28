@@ -91,15 +91,16 @@ sim_pos_con = ifelse(interactive(),
                 read_tsv),
                 no = lapply(list(args[-(1:6)]), read_tsv)) %>%
   Reduce(function(x, y) bind_rows(x, y), .) %>% 
-  ### sum up the mutcounts grouping by bin profile
+  ### keep only mutfold and simulated feature specified in this nf channel
+  filter(`mutfoldinc`==mutfoldinc & `simulated_mark`==dnarep_mark_simulate) %>% 
+  select(-mutfoldinc) %>% 
+  ### sum up the mutcounts across bound chromosomes, grouping by bin profile
   group_by(across(!contains("simulated_mutcount") & !contains("freq_trinuc32"))) %>% 
   summarise_at(vars(contains("simulated_mutcount") | contains("freq_trinuc32")),
                ~sum(.)) %>% 
   ungroup
 
 gc()
-
-simulated_mutcount_colname = names(sim_pos_con)[1]
 
 
 ## prepare tables for trinuc matching or adj, if selected
@@ -198,7 +199,7 @@ if(trinuc_mode == "matching"){
   reg_table = sim_pos_con %>%
     select(-c(simulated_mark, freq_trinuc32)) %>% 
     merge(offset, all = T) %>% 
-    rename("mutcount" = all_of(simulated_mutcount_colname)) %>%
+    rename("mutcount" = "simulated_mutcount_x-fold") %>%
     replace_na(list(mutcount = 0)) %>%
     # convert offset to logarithmic
     mutate(log_freq_trinuc32 = log(freq_trinuc32 + 1)) %>% 

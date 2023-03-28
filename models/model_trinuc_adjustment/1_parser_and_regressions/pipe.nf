@@ -49,7 +49,7 @@ median_scores.into{median_scores_for_binarize_scores; median_scores_for_load_sam
 
 // in parallel per chromosome (no chrY, as RepliSeq does not have it), load genomic coordinates of the DNA repair marks and chromatin features that are specified in input_lists/
 
-chromosomes = Channel.from( ['21', '22'] ) //( ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12', '13', '14', '15', '16', '17', '18', '19', '20', '21', '22', 'X'] )
+chromosomes = Channel.from( ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12', '13', '14', '15', '16', '17', '18', '19', '20', '21', '22', 'X'] )
 
 process load_feature_maps {
 
@@ -291,7 +291,7 @@ process sim_pos_con {
     path median_scores_collected from median_scores_for_sim_pos_con.collect() // from 1st process
 
     output:
-    tuple val(name), val(mutation_foldinc), path("ready_for_regression_sim_pos_con_chr*_mutfoldinc*_*.tsv") into ready_for_regression_single_chromosome_sim_pos_con
+    file 'ready_for_regression_sim_pos_con_chr*_mutfoldinc*_*.tsv' into ready_for_regression_single_chromosome_sim_pos_con
 
     """
     #!/usr/bin/env bash
@@ -314,7 +314,19 @@ process sim_pos_con {
     """
 }
 
+
 // now concatenate chromosomes and run regressions
+
+// AGAIN in parallel, which dna repair mark has mutations increased
+Channel
+    .fromPath(params.dnarep_marks)
+    .splitCsv(header:true)
+    .map{ row-> tuple(row.name, row.path) }
+    .set{ dnarep_marks_simulate }
+
+// AGAIN also in parallel, fold-values by which increase mutation burden in each DNA repair mark's "high abundance" bins
+mutation_foldincs = Channel.from(params.mutation_foldinc.tokenize(','))
+
 process sim_pos_con_concat_chr_run_regression {
 
     //queue = 'normal_prio_long'
@@ -326,7 +338,8 @@ process sim_pos_con_concat_chr_run_regression {
     path dnarep_marks from params.dnarep_marks
     path offset from offset_table_for_process6_1 // from 4th process
     val trinuc_mode from params.trinuc_mode
-    tuple val(name), val(mutation_foldinc), path(ready_for_regression_sim_pos_con) from ready_for_regression_single_chromosome_sim_pos_con.groupTuple().collect() // combine chromosomes from previous process; keep dnarep mark and mutfold channels split
+    set name, path, mutation_foldinc from dnarep_marks_simulate.combine(mutation_foldincs) // nest mutation_foldincs within dnarep_marks_simulate
+    path ready_for_regression_sim_pos_con from ready_for_regression_single_chromosome_sim_pos_con.collect() // combine chromosomes from previous process
 
     output:
     file 'simulated_positive_control.tsv' into sim_pos_con
