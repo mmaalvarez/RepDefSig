@@ -26,9 +26,13 @@ if(interactive()){
   source(args[1])
 }
 
+sample = ifelse(interactive(),
+                yes = "b668939e-7d77-504c-abfa-7b4982106ab9", #"MSM0.103", #"MSM0.124",
+                no = gsub("\\[|\\]", "", args[2])) # after channeling in nextflow, the sample names are contained within brackets, so remove them
+
 metadata = ifelse(interactive(),
                   yes = "/g/strcombio/fsupek_cancer3/malvarez/WGS_tumors/somatic_variation/cell_lines/kucab_2019/processed/sample_treatments.tsv,/g/strcombio/fsupek_cancer3/malvarez/WGS_tumors/somatic_variation/cell_lines/zou_2021/processed/sample_gene_ko.tsv,/g/strcombio/fsupek_cancer3/malvarez/WGS_tumors/somatic_variation/TCGA_PCAWG_Hartwig_CPTAC_POG_MMRFCOMMPASS/metadata/metadatacomb_metadata_final_6datasets__noconsent_44plus11_samples_removed.csv",
-                  no = args[2]) %>%
+                  no = args[3]) %>%
   strsplit(., split=",", fixed = T) %>% 
   magrittr::extract2(1) %>% 
   # only sample_id and info* columns are selected
@@ -37,13 +41,13 @@ metadata = ifelse(interactive(),
 
 dnarep_marks = ifelse(interactive(),
                       yes = "../input_lists/dnarep_marks.csv",
-                      no = args[3]) %>%
+                      no = args[4]) %>%
   read_csv(comment = "#")
 
 # load offset from 3rd process
 offset = ifelse(interactive(),
                 yes = Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/offset.tsv")[1],
-                no = args[4]) %>% 
+                no = args[5]) %>% 
   read_tsv
 # rename the chromatin environment column (typically 'RepliSeq') to match the "mb_domain" name given to the general mutation table
 colnames(offset)[1] = "mb_domain"
@@ -54,41 +58,42 @@ offset = offset %>%
 ## type of trinuc modification, if any
 trinuc_mode = ifelse(interactive(),
                      yes = "adjustment",
-                     no = args[5])
+                     no = args[6])
 
 
 ## load ready_for_regression (ALL sep chromosomes) from previous process, and bind them
 merged = ifelse(interactive(),
-                yes = lapply(list(c(#Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/ready_for_regression_chr1.tsv")[1],
-                  #Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/ready_for_regression_chr2.tsv")[1],
-                  #Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/ready_for_regression_chr3.tsv")[1],
-                  #Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/ready_for_regression_chr4.tsv")[1],
-                  #Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/ready_for_regression_chr5.tsv")[1],
-                  #Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/ready_for_regression_chr6.tsv")[1],
-                  #Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/ready_for_regression_chr7.tsv")[1],
-                  #Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/ready_for_regression_chr8.tsv")[1],
-                  #Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/ready_for_regression_chr9.tsv")[1],
-                  #Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/ready_for_regression_chr10.tsv")[1],
-                  #Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/ready_for_regression_chr11.tsv")[1],
-                  #Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/ready_for_regression_chr12.tsv")[1],
-                  #Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/ready_for_regression_chr13.tsv")[1],
-                  #Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/ready_for_regression_chr14.tsv")[1],
-                  #Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/ready_for_regression_chr15.tsv")[1],
-                  #Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/ready_for_regression_chr16.tsv")[1],
-                  #Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/ready_for_regression_chr17.tsv")[1],
-                  #Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/ready_for_regression_chr18.tsv")[1],
-                  #Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/ready_for_regression_chr19.tsv")[1],
-                  #Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/ready_for_regression_chr20.tsv")[1],
-                  Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/ready_for_regression_chr21.tsv")[1],
-                  Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/ready_for_regression_chr22.tsv")[1] #,
-                  #Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/ready_for_regression_chrX.tsv")[1]
-                )),
+                yes = lapply(list(c(#Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/ready_for_regression_chr1.tsv"),
+                                    #Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/ready_for_regression_chr2.tsv"),
+                                    #Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/ready_for_regression_chr3.tsv"),
+                                    #Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/ready_for_regression_chr4.tsv"),
+                                    #Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/ready_for_regression_chr5.tsv"),
+                                    #Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/ready_for_regression_chr6.tsv"),
+                                    #Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/ready_for_regression_chr7.tsv"),
+                                    #Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/ready_for_regression_chr8.tsv"),
+                                    #Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/ready_for_regression_chr9.tsv"),
+                                    #Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/ready_for_regression_chr10.tsv"),
+                                    #Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/ready_for_regression_chr11.tsv"),
+                                    #Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/ready_for_regression_chr12.tsv"),
+                                    #Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/ready_for_regression_chr13.tsv"),
+                                    #Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/ready_for_regression_chr14.tsv"),
+                                    #Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/ready_for_regression_chr15.tsv"),
+                                    #Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/ready_for_regression_chr16.tsv"),
+                                    #Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/ready_for_regression_chr17.tsv"),
+                                    #Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/ready_for_regression_chr18.tsv"),
+                                    #Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/ready_for_regression_chr19.tsv"),
+                                    #Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/ready_for_regression_chr20.tsv"),
+                                    Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/ready_for_regression_chr21.tsv"),
+                                    Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/ready_for_regression_chr22.tsv") #,
+                                    #Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/ready_for_regression_chrX.tsv")
+                                  )),
                 read_tsv),
-                no = lapply(list(args[-(1:5)]), read_tsv)) %>%
-  Reduce(function(x, y) bind_rows(x, y), .)
+                no = lapply(list(args[-(1:6)]), read_tsv)) %>%
+  Reduce(function(x, y) bind_rows(x, y), .) %>% 
+  ## keep only the sample of this channel
+  filter(`sample_id` == sample)
+  
 gc()
-
-sample = unique(merged$sample_id)
 
 metadata_sample = metadata %>% 
   filter(sample_id == sample)

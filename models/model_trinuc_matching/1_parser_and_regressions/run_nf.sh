@@ -15,12 +15,12 @@ nextflow -log $PWD/log/nextflow.log run pipe.nf --dnarep_marks $PWD/input_lists/
 												--good_mappability_regions /g/strcombio/fsupek_home/mmunteanu/reference/CRG75_nochr.bed \
 												--trinuc_mode matching \
 												--utils /g/strcombio/fsupek_data/users/malvarez/projects/RepDefSig/bin/utils.R \
-												--memory_process1 6 \
-												--memory_process2 11 \
-												--memory_process3 25 \
-												--memory_process4 8 \
-												--memory_process5_1 9 \
-												--memory_process5_2 3 \
-												--memory_process6_1 9 \
-												--memory_process6_2 10 \
+												--memory_process1 7 \
+												--memory_process2 12 \
+												--memory_process3 30 \
+												--memory_process4 9 \
+												--memory_process5_1 10 \
+												--memory_process5_2 8 \
+												--memory_process6_1 10 \
+												--memory_process6_2 25 \
 												-resume #\ -with-tower

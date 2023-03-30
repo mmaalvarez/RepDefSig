@@ -142,4 +142,4 @@ if(nrow(merged) == 0){
 }
 
 
-write_tsv(merged, paste0("ready_for_regression_", chromosome, ".tsv"))
+write_tsv(merged, paste0("ready_for_regression_", sample, "_", chromosome, ".tsv"))

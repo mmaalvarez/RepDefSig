@@ -12,7 +12,7 @@ Channel
 
 process list_median_scores {
 
-    time = 1.hour
+    time = 2.hour
     memory = { (params.memory_process1 + 5*(task.attempt-1)).GB }
 
     input:
@@ -53,7 +53,7 @@ chromosomes = Channel.from( ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10', 
 
 process load_feature_maps {
 
-    time = 1.hour
+    time = 2.hour
     memory = { (params.memory_process2 + 5*(task.attempt-1)).GB }
 
     input:
@@ -93,8 +93,8 @@ map_features.into{map_features_for_binarize_scores; map_features_for_process5_1;
 
 process binarize_scores {
 
-    time = 8.hour
-    memory = { (params.memory_process3 + 18*(task.attempt-1)).GB }
+    time = 9.hour
+    memory = { (params.memory_process3 + 20*(task.attempt-1)).GB }
 
     input:
     path 'chromatin_features' from params.chromatin_features
@@ -175,13 +175,15 @@ Channel
     .splitCsv(header:false)
     .set{ sample_name }
 
+sample_name.into{sample_name_for_5_1; sample_name_for_5_2}
+
 process load_sample_somatic_muts_overlap_feature_maps {
 
-    time = 1.hour
+    time = 2.hour
     memory = { (params.memory_process5_1 + 4*(task.attempt-1)).GB }
 
     input:
-    set sample, map_features_single_chr from sample_name.combine(map_features_for_process5_1) // nest raw score map features PER CHROMOSOME (not collected) within sample_name
+    set sample, map_features_single_chr from sample_name_for_5_1.combine(map_features_for_process5_1) // nest raw score map features PER CHROMOSOME (not collected) within sample_name
     val somatic_data from params.somatic_data
     path dnarep_marks from params.dnarep_marks
     path chromatin_features from params.chromatin_features 
@@ -189,7 +191,7 @@ process load_sample_somatic_muts_overlap_feature_maps {
     path median_scores_collected from median_scores_for_load_sample_somatic_muts_overlap_feature_maps.collect() // from 1st process
 
     output:
-    file 'ready_for_regression_chr*.tsv' into ready_for_regression_single_chromosome
+    file 'ready_for_regression_*_chr*.tsv' into ready_for_regression_single_chromosome
 
     """
     #!/usr/bin/env bash
@@ -218,16 +220,17 @@ process load_sample_somatic_muts_overlap_feature_maps {
 process real_data_concat_chr_add_offset_run_regression {
 
     //queue = 'normal_prio_long'
-    time = 4.hour
+    time = 8.hour
     memory = { (params.memory_process5_2 + 4*(task.attempt-1)).GB }
 
     input:
     path 'utils' from params.utils
+    val sample from sample_name_for_5_2
     val metadata from params.metadata
     path dnarep_marks from params.dnarep_marks
     path offset from offset_table_for_process5_2 // from 4th process
     val trinuc_mode from params.trinuc_mode
-    path ready_for_regression from ready_for_regression_single_chromosome.collect() // rowbind chromosomes from previous process
+    path ready_for_regression from ready_for_regression_single_chromosome.collect() // rowbind chromosomes (and all samples, each sample will be filtered in R script) from previous process
 
     output:
     file 'results_real_sample.tsv' into results_real_sample
@@ -241,14 +244,14 @@ process real_data_concat_chr_add_offset_run_regression {
         then
             # there is a conda environment named "R"
             conda activate R
-            Rscript $PWD/bin/5.2_concat_chr_add_offset_run_regression.R ${utils} ${metadata} ${dnarep_marks} ${offset} ${trinuc_mode} ${ready_for_regression} 
+            Rscript $PWD/bin/5.2_concat_chr_add_offset_run_regression.R ${utils} ${sample} ${metadata} ${dnarep_marks} ${offset} ${trinuc_mode} ${ready_for_regression} 
         else
             # no conda environment named "R"
-            Rscript $PWD/bin/5.2_concat_chr_add_offset_run_regression.R ${utils} ${metadata} ${dnarep_marks} ${offset} ${trinuc_mode} ${ready_for_regression} 
+            Rscript $PWD/bin/5.2_concat_chr_add_offset_run_regression.R ${utils} ${sample} ${metadata} ${dnarep_marks} ${offset} ${trinuc_mode} ${ready_for_regression} 
         fi
     else
         # no conda
-        Rscript $PWD/bin/5.2_concat_chr_add_offset_run_regression.R ${utils} ${metadata} ${dnarep_marks} ${offset} ${trinuc_mode} ${ready_for_regression} 
+        Rscript $PWD/bin/5.2_concat_chr_add_offset_run_regression.R ${utils} ${sample} ${metadata} ${dnarep_marks} ${offset} ${trinuc_mode} ${ready_for_regression} 
     fi
     """
 }
@@ -277,7 +280,7 @@ mutation_foldincs = Channel.from(params.mutation_foldinc.tokenize(','))
 
 process sim_pos_con {
     
-    time = 1.hour
+    time = 2.hour
     memory = { (params.memory_process6_1 + 5*(task.attempt-1)).GB }
 
     input:
@@ -330,8 +333,8 @@ mutation_foldincs = Channel.from(params.mutation_foldinc.tokenize(','))
 process sim_pos_con_concat_chr_run_regression {
 
     //queue = 'normal_prio_long'
-    time = 4.hour
-    memory = { (params.memory_process6_2 + 5*(task.attempt-1)).GB }
+    time = 8.hour
+    memory = { (params.memory_process6_2 + 10*(task.attempt-1)).GB }
 
     input:
     path 'utils' from params.utils
