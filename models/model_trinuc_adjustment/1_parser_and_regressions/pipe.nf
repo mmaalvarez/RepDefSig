@@ -49,7 +49,7 @@ median_scores.into{median_scores_for_binarize_scores; median_scores_for_load_sam
 
 // in parallel per chromosome (no chrY, as RepliSeq does not have it), load genomic coordinates of the DNA repair marks and chromatin features that are specified in input_lists/
 
-chromosomes = Channel.from( ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12', '13', '14', '15', '16', '17', '18', '19', '20', '21', '22', 'X'] )
+chromosomes = Channel.from( ['1', '2', '3', '4'] ) //, '5', '6', '7', '8', '9', '10', '11', '12', '13', '14', '15', '16', '17', '18', '19', '20', '21', '22', 'X'] )
 
 process load_feature_maps {
 
@@ -165,7 +165,7 @@ process offset {
 offset_table.into{offset_table_for_process5_2; offset_table_for_process6_1}
 
 
-
+/*
 
 // process in parallel each sample specified in input_lists/sample_ids.tsv
 // also in parallel per chromosome
@@ -261,7 +261,7 @@ results_real_sample
     .collectFile(name: 'res/results_real_samples.tsv', keepHeader: true)
     .println { "Regression results for all real samples saved in res/results_real_samples.tsv" }
 
-
+*/
 
 
 
@@ -278,7 +278,8 @@ Channel
 // also in parallel, fold-values by which increase mutation burden in each DNA repair mark's "high abundance" bins
 mutation_foldincs = Channel.from(params.mutation_foldinc.tokenize(','))
 
-process sim_pos_con {
+// start by creating the baseline sample per chromosome/foldinc/repairmark
+process baseline_sample {
     
     time = 2.hour
     memory = { (params.memory_process6_1 + 5*(task.attempt-1)).GB }
@@ -294,7 +295,7 @@ process sim_pos_con {
     path median_scores_collected from median_scores_for_sim_pos_con.collect() // from 1st process
 
     output:
-    file 'ready_for_regression_sim_pos_con_chr*_mutfoldinc*_*.tsv' into ready_for_regression_single_chromosome_sim_pos_con
+    file 'baseline_sample_chr*_mutfoldinc*_*.tsv' into baseline_sample_single_chromosome
 
     """
     #!/usr/bin/env bash
@@ -305,20 +306,21 @@ process sim_pos_con {
         then
             # there is a conda environment named "R"
             conda activate R
-            Rscript $PWD/bin/6.1_simulate_pos_controls.R ${somatic_data} ${metadata} ${dnarep_marks} ${chromatin_features} ${offset} ${map_features_single_chr} ${good_mappability_regions} ${mutation_foldinc} ${name} ${median_scores_collected}
+            Rscript $PWD/bin/6.1_baseline_sample.R ${somatic_data} ${metadata} ${dnarep_marks} ${chromatin_features} ${offset} ${map_features_single_chr} ${good_mappability_regions} ${mutation_foldinc} ${name} ${median_scores_collected}
         else
             # no conda environment named "R"
-            Rscript $PWD/bin/6.1_simulate_pos_controls.R ${somatic_data} ${metadata} ${dnarep_marks} ${chromatin_features} ${offset} ${map_features_single_chr} ${good_mappability_regions} ${mutation_foldinc} ${name} ${median_scores_collected}
+            Rscript $PWD/bin/6.1_baseline_sample.R ${somatic_data} ${metadata} ${dnarep_marks} ${chromatin_features} ${offset} ${map_features_single_chr} ${good_mappability_regions} ${mutation_foldinc} ${name} ${median_scores_collected}
         fi
     else
         # no conda
-        Rscript $PWD/bin/6.1_simulate_pos_controls.R ${somatic_data} ${metadata} ${dnarep_marks} ${chromatin_features} ${offset} ${map_features_single_chr} ${good_mappability_regions} ${mutation_foldinc} ${name} ${median_scores_collected}
+        Rscript $PWD/bin/6.1_baseline_sample.R ${somatic_data} ${metadata} ${dnarep_marks} ${chromatin_features} ${offset} ${map_features_single_chr} ${good_mappability_regions} ${mutation_foldinc} ${name} ${median_scores_collected}
     fi
     """
 }
 
+/*
 
-// now concatenate chromosomes and run regressions
+// now concatenate chromosomes of baseline sample, add extra mutations to create sim_pos_con, and run regressions
 
 // AGAIN in parallel, which dna repair mark has mutations increased
 Channel
@@ -330,7 +332,7 @@ Channel
 // AGAIN also in parallel, fold-values by which increase mutation burden in each DNA repair mark's "high abundance" bins
 mutation_foldincs = Channel.from(params.mutation_foldinc.tokenize(','))
 
-process sim_pos_con_concat_chr_run_regression {
+process concat_chr_simposcon_run_regression {
 
     //queue = 'normal_prio_long'
     time = 8.hour
@@ -342,7 +344,7 @@ process sim_pos_con_concat_chr_run_regression {
     path offset from offset_table_for_process6_1 // from 4th process
     val trinuc_mode from params.trinuc_mode
     set name, path, mutation_foldinc from dnarep_marks_simulate.combine(mutation_foldincs) // nest mutation_foldincs within dnarep_marks_simulate
-    path ready_for_regression_sim_pos_con from ready_for_regression_single_chromosome_sim_pos_con.collect() // combine chromosomes from previous process
+    path baseline_sample from baseline_sample_single_chromosome.collect() // combine chromosomes from previous process
 
     output:
     file 'simulated_positive_control.tsv' into sim_pos_con
@@ -356,14 +358,14 @@ process sim_pos_con_concat_chr_run_regression {
         then
             # there is a conda environment named "R"
             conda activate R
-            Rscript $PWD/bin/6.2_concat_chr_run_regression.R ${utils} ${dnarep_marks} ${name} ${mutation_foldinc} ${offset} ${trinuc_mode} ${ready_for_regression_sim_pos_con}
+            Rscript $PWD/bin/6.2_concat_chr_simposcon_run_regression.R ${utils} ${dnarep_marks} ${name} ${mutation_foldinc} ${offset} ${trinuc_mode} ${baseline_sample}
         else
             # no conda environment named "R"
-            Rscript $PWD/bin/6.2_concat_chr_run_regression.R ${utils} ${dnarep_marks} ${name} ${mutation_foldinc} ${offset} ${trinuc_mode} ${ready_for_regression_sim_pos_con}
+            Rscript $PWD/bin/6.2_concat_chr_simposcon_run_regression.R ${utils} ${dnarep_marks} ${name} ${mutation_foldinc} ${offset} ${trinuc_mode} ${baseline_sample}
         fi
     else
         # no conda
-        Rscript $PWD/bin/6.2_concat_chr_run_regression.R ${utils} ${dnarep_marks} ${name} ${mutation_foldinc} ${offset} ${trinuc_mode} ${ready_for_regression_sim_pos_con}
+        Rscript $PWD/bin/6.2_concat_chr_simposcon_run_regression.R ${utils} ${dnarep_marks} ${name} ${mutation_foldinc} ${offset} ${trinuc_mode} ${baseline_sample}
     fi
     """
 }
@@ -372,3 +374,4 @@ process sim_pos_con_concat_chr_run_regression {
 sim_pos_con
     .collectFile(name: 'res/simulated_positive_controls.tsv', keepHeader: true)
     .println { "Regression results for simulated positive control samples saved in res/simulated_positive_controls.tsv" }
+*/

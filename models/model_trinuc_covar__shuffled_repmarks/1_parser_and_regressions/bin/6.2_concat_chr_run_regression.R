@@ -64,38 +64,39 @@ trinuc_mode = ifelse(interactive(),
 
 ## load ready_for_regression (ALL sep chromosomes) from previous process, and bind them
 sim_pos_con = ifelse(interactive(),
-                yes = lapply(list(c(#Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/ready_for_regression_sim_pos_con_chr1_mutfoldinc2_OGG1_GOx30_chipseq.tsv")[1],
-                                    #Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/ready_for_regression_sim_pos_con_chr2_mutfoldinc2_OGG1_GOx30_chipseq.tsv")[1],
-                                    #Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/ready_for_regression_sim_pos_con_chr3_mutfoldinc2_OGG1_GOx30_chipseq.tsv")[1],
-                                    #Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/ready_for_regression_sim_pos_con_chr4_mutfoldinc2_OGG1_GOx30_chipseq.tsv")[1],
-                                    #Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/ready_for_regression_sim_pos_con_chr5_mutfoldinc2_OGG1_GOx30_chipseq.tsv")[1],
-                                    #Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/ready_for_regression_sim_pos_con_chr6_mutfoldinc2_OGG1_GOx30_chipseq.tsv")[1],
-                                    #Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/ready_for_regression_sim_pos_con_chr7_mutfoldinc2_OGG1_GOx30_chipseq.tsv")[1],
-                                    #Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/ready_for_regression_sim_pos_con_chr8_mutfoldinc2_OGG1_GOx30_chipseq.tsv")[1],
-                                    #Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/ready_for_regression_sim_pos_con_chr9_mutfoldinc2_OGG1_GOx30_chipseq.tsv")[1],
-                                    #Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/ready_for_regression_sim_pos_con_chr10_mutfoldinc2_OGG1_GOx30_chipseq.tsv")[1],
-                                    #Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/ready_for_regression_sim_pos_con_chr11_mutfoldinc2_OGG1_GOx30_chipseq.tsv")[1],
-                                    #Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/ready_for_regression_sim_pos_con_chr12_mutfoldinc2_OGG1_GOx30_chipseq.tsv")[1],
-                                    #Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/ready_for_regression_sim_pos_con_chr13_mutfoldinc2_OGG1_GOx30_chipseq.tsv")[1],
-                                    #Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/ready_for_regression_sim_pos_con_chr14_mutfoldinc2_OGG1_GOx30_chipseq.tsv")[1],
-                                    #Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/ready_for_regression_sim_pos_con_chr15_mutfoldinc2_OGG1_GOx30_chipseq.tsv")[1],
-                                    #Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/ready_for_regression_sim_pos_con_chr16_mutfoldinc2_OGG1_GOx30_chipseq.tsv")[1],
-                                    #Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/ready_for_regression_sim_pos_con_chr17_mutfoldinc2_OGG1_GOx30_chipseq.tsv")[1],
-                                    #Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/ready_for_regression_sim_pos_con_chr18_mutfoldinc2_OGG1_GOx30_chipseq.tsv")[1],
-                                    #Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/ready_for_regression_sim_pos_con_chr19_mutfoldinc2_OGG1_GOx30_chipseq.tsv")[1],
-                                    #Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/ready_for_regression_sim_pos_con_chr20_mutfoldinc2_OGG1_GOx30_chipseq.tsv")[1],
+                yes = lapply(list(c(Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/ready_for_regression_sim_pos_con_chr1_mutfoldinc2_OGG1_GOx30_chipseq.tsv")[1],
+                                    Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/ready_for_regression_sim_pos_con_chr2_mutfoldinc2_OGG1_GOx30_chipseq.tsv")[1],
+                                    Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/ready_for_regression_sim_pos_con_chr3_mutfoldinc2_OGG1_GOx30_chipseq.tsv")[1],
+                                    Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/ready_for_regression_sim_pos_con_chr4_mutfoldinc2_OGG1_GOx30_chipseq.tsv")[1],
+                                    Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/ready_for_regression_sim_pos_con_chr5_mutfoldinc2_OGG1_GOx30_chipseq.tsv")[1],
+                                    Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/ready_for_regression_sim_pos_con_chr6_mutfoldinc2_OGG1_GOx30_chipseq.tsv")[1],
+                                    Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/ready_for_regression_sim_pos_con_chr7_mutfoldinc2_OGG1_GOx30_chipseq.tsv")[1],
+                                    Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/ready_for_regression_sim_pos_con_chr8_mutfoldinc2_OGG1_GOx30_chipseq.tsv")[1],
+                                    Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/ready_for_regression_sim_pos_con_chr9_mutfoldinc2_OGG1_GOx30_chipseq.tsv")[1],
+                                    Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/ready_for_regression_sim_pos_con_chr10_mutfoldinc2_OGG1_GOx30_chipseq.tsv")[1],
+                                    Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/ready_for_regression_sim_pos_con_chr11_mutfoldinc2_OGG1_GOx30_chipseq.tsv")[1],
+                                    Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/ready_for_regression_sim_pos_con_chr12_mutfoldinc2_OGG1_GOx30_chipseq.tsv")[1],
+                                    Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/ready_for_regression_sim_pos_con_chr13_mutfoldinc2_OGG1_GOx30_chipseq.tsv")[1],
+                                    Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/ready_for_regression_sim_pos_con_chr14_mutfoldinc2_OGG1_GOx30_chipseq.tsv")[1],
+                                    Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/ready_for_regression_sim_pos_con_chr15_mutfoldinc2_OGG1_GOx30_chipseq.tsv")[1],
+                                    Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/ready_for_regression_sim_pos_con_chr16_mutfoldinc2_OGG1_GOx30_chipseq.tsv")[1],
+                                    Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/ready_for_regression_sim_pos_con_chr17_mutfoldinc2_OGG1_GOx30_chipseq.tsv")[1],
+                                    Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/ready_for_regression_sim_pos_con_chr18_mutfoldinc2_OGG1_GOx30_chipseq.tsv")[1],
+                                    Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/ready_for_regression_sim_pos_con_chr19_mutfoldinc2_OGG1_GOx30_chipseq.tsv")[1],
+                                    Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/ready_for_regression_sim_pos_con_chr20_mutfoldinc2_OGG1_GOx30_chipseq.tsv")[1],
                                     Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/ready_for_regression_sim_pos_con_chr21_mutfoldinc2_OGG1_GOx30_chipseq.tsv")[1],
-                                    Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/ready_for_regression_sim_pos_con_chr22_mutfoldinc2_OGG1_GOx30_chipseq.tsv")[1] #,
-                                    #Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/ready_for_regression_sim_pos_con_chrX_mutfoldinc2_OGG1_GOx30_chipseq.tsv")[1]
-                )),
+                                    Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/ready_for_regression_sim_pos_con_chr22_mutfoldinc2_OGG1_GOx30_chipseq.tsv")[1],
+                                    Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/ready_for_regression_sim_pos_con_chrX_mutfoldinc2_OGG1_GOx30_chipseq.tsv")[1])),
                 read_tsv),
-                no = lapply(list(args[-(1:6)]), read_tsv)) %>%
+                no = lapply(list(args[-(1:6)][str_detect(args[-(1:6)], 
+                                                         paste0("_mutfoldinc", mutfoldinc, "_", dnarep_mark_simulate, ".tsv"))]), 
+                            read_tsv)) %>%
   Reduce(function(x, y) bind_rows(x, y), .) %>% 
-  ### keep only mutfold and simulated feature specified in this nf channel
+  ### ensure that we keep only mutfold and simulated feature specified in this nf channel
   filter(`mutfoldinc`==mutfoldinc & `simulated_mark`==dnarep_mark_simulate) %>% 
   select(-mutfoldinc) %>% 
   ### sum up the mutcounts across bound chromosomes, grouping by bin profile
-  group_by(across(!contains("simulated_mutcount") & !contains("freq_trinuc32"))) %>% 
+  group_by(across(!contains("simulated_mutcount") & !contains("freq_trinuc32") & !matches("chr"))) %>% 
   summarise_at(vars(contains("simulated_mutcount") | contains("freq_trinuc32")),
                ~sum(.)) %>% 
   ungroup
@@ -225,6 +226,14 @@ rm(sim_pos_con) ; gc()
 
 if(sum(reg_table$mutcount) >= 1){ # only do regression if there are not only 0 muts
   
+  # dna rep mark levels as factors
+  reg_table = reg_table %>% 
+    mutate_at(vars(contains(match = dnarep_marks$name)),
+              ~if(unique(.)[1] %in% c('AID_target', 'bgGenome')){
+                factor(., ordered = F, levels = c('AID_target', 'bgGenome')) # higher mut rates --> baseline
+              }else{
+                factor(., ordered = F, levels = c('low', 'high'))}) # baseline --> lower mut rates
+
   # stick to a generalized linear model for the negative binomial family
   cat(sprintf('Running regression in trinucl. mode: "%s"...\n', trinuc_mode))
   y = suppressWarnings(glm.nb(formula = formula, 
@@ -250,7 +259,7 @@ if(sum(reg_table$mutcount) >= 1){ # only do regression if there are not only 0 m
   
     cat(sprintf('WARNING: sample %s has 0 mutations: can not run regression...\n', paste0(dnarep_mark_simulate, "-", altered_level, "__muts_", mutfoldinc, "-fold")))
     
-    col_names = c("sample_id", gsub("AID_regionslow", "AID_regionsbgGenome", paste0(c(paste("estimate", dnarep_marks$name, sep = "_"), paste("conf.low", dnarep_marks$name, sep = "_"), paste("conf.high", dnarep_marks$name, sep = "_")), "low")), "theta")
+    col_names = c("sample_id", gsub("AID_regionshigh", "AID_regionsbgGenome", paste0(c(paste("estimate", dnarep_marks$name, sep = "_"), paste("conf.low", dnarep_marks$name, sep = "_"), paste("conf.high", dnarep_marks$name, sep = "_")), "high")), "theta")
     
     y_tidy = data.frame(matrix(ncol = length(col_names), nrow = 1)) %>% 
       `colnames<-`(col_names) %>% 

@@ -14,8 +14,10 @@ conflict_prefer("reduce", "IRanges")
 conflict_prefer("expand", "tidyr")
 
 
-#### Here we load all bin-wise mutcounts of all chromosomes CONCATENATED
+#### Here we load all bin-wise mutcounts of all chromosomes of the baseline sample CONCATENATED
 # so we just sum up the mutcounts grouping by bin profile
+# and create sim_pos_con
+# and regression
 
 
 # from command parameters
@@ -42,9 +44,8 @@ altered_level = ifelse(dnarep_mark_simulate == "AID_regions",
                        yes = "targets",
                        no = "high_activity")
 
-
 mutfoldinc = ifelse(interactive(),
-                yes = "2",
+                yes = "0.01",
                 no = args[4]) %>% as.numeric
 
 # load offset from 3rd process
@@ -62,45 +63,92 @@ trinuc_mode = ifelse(interactive(),
                      yes = "adjustment",
                      no = args[6])
 
-## load ready_for_regression (ALL sep chromosomes) from previous process, and bind them
-sim_pos_con = ifelse(interactive(),
-                yes = lapply(list(c(#Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/ready_for_regression_sim_pos_con_chr1_mutfoldinc2_OGG1_GOx30_chipseq.tsv")[1],
-                                    #Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/ready_for_regression_sim_pos_con_chr2_mutfoldinc2_OGG1_GOx30_chipseq.tsv")[1],
-                                    #Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/ready_for_regression_sim_pos_con_chr3_mutfoldinc2_OGG1_GOx30_chipseq.tsv")[1],
-                                    #Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/ready_for_regression_sim_pos_con_chr4_mutfoldinc2_OGG1_GOx30_chipseq.tsv")[1],
-                                    #Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/ready_for_regression_sim_pos_con_chr5_mutfoldinc2_OGG1_GOx30_chipseq.tsv")[1],
-                                    #Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/ready_for_regression_sim_pos_con_chr6_mutfoldinc2_OGG1_GOx30_chipseq.tsv")[1],
-                                    #Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/ready_for_regression_sim_pos_con_chr7_mutfoldinc2_OGG1_GOx30_chipseq.tsv")[1],
-                                    #Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/ready_for_regression_sim_pos_con_chr8_mutfoldinc2_OGG1_GOx30_chipseq.tsv")[1],
-                                    #Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/ready_for_regression_sim_pos_con_chr9_mutfoldinc2_OGG1_GOx30_chipseq.tsv")[1],
-                                    #Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/ready_for_regression_sim_pos_con_chr10_mutfoldinc2_OGG1_GOx30_chipseq.tsv")[1],
-                                    #Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/ready_for_regression_sim_pos_con_chr11_mutfoldinc2_OGG1_GOx30_chipseq.tsv")[1],
-                                    #Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/ready_for_regression_sim_pos_con_chr12_mutfoldinc2_OGG1_GOx30_chipseq.tsv")[1],
-                                    #Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/ready_for_regression_sim_pos_con_chr13_mutfoldinc2_OGG1_GOx30_chipseq.tsv")[1],
-                                    #Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/ready_for_regression_sim_pos_con_chr14_mutfoldinc2_OGG1_GOx30_chipseq.tsv")[1],
-                                    #Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/ready_for_regression_sim_pos_con_chr15_mutfoldinc2_OGG1_GOx30_chipseq.tsv")[1],
-                                    #Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/ready_for_regression_sim_pos_con_chr16_mutfoldinc2_OGG1_GOx30_chipseq.tsv")[1],
-                                    #Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/ready_for_regression_sim_pos_con_chr17_mutfoldinc2_OGG1_GOx30_chipseq.tsv")[1],
-                                    #Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/ready_for_regression_sim_pos_con_chr18_mutfoldinc2_OGG1_GOx30_chipseq.tsv")[1],
-                                    #Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/ready_for_regression_sim_pos_con_chr19_mutfoldinc2_OGG1_GOx30_chipseq.tsv")[1],
-                                    #Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/ready_for_regression_sim_pos_con_chr20_mutfoldinc2_OGG1_GOx30_chipseq.tsv")[1],
-                                    Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/ready_for_regression_sim_pos_con_chr21_mutfoldinc2_OGG1_GOx30_chipseq.tsv")[1],
-                                    Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/ready_for_regression_sim_pos_con_chr22_mutfoldinc2_OGG1_GOx30_chipseq.tsv")[1] #,
-                                    #Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/ready_for_regression_sim_pos_con_chrX_mutfoldinc2_OGG1_GOx30_chipseq.tsv")[1]
-                )),
+
+## load ready_for_regression (ALL sep chromosomes) (ACTUALLY BASELINE SAMPLE) from previous process, and bind them
+baseline_sample = ifelse(interactive(),
+                yes = lapply(list(c(Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/baseline_sample_chr1_mutfoldinc0.01_OGG1_GOx30_chipseq.tsv")[1],
+                                    Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/baseline_sample_chr2_mutfoldinc0.01_OGG1_GOx30_chipseq.tsv")[1],
+                                    Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/baseline_sample_chr3_mutfoldinc0.01_OGG1_GOx30_chipseq.tsv")[1],
+                                    Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/baseline_sample_chr4_mutfoldinc0.01_OGG1_GOx30_chipseq.tsv")[1],
+                                    Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/baseline_sample_chr5_mutfoldinc0.01_OGG1_GOx30_chipseq.tsv")[1],
+                                    Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/baseline_sample_chr6_mutfoldinc0.01_OGG1_GOx30_chipseq.tsv")[1],
+                                    Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/baseline_sample_chr7_mutfoldinc0.01_OGG1_GOx30_chipseq.tsv")[1],
+                                    Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/baseline_sample_chr8_mutfoldinc0.01_OGG1_GOx30_chipseq.tsv")[1],
+                                    Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/baseline_sample_chr9_mutfoldinc0.01_OGG1_GOx30_chipseq.tsv")[1],
+                                    Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/baseline_sample_chr10_mutfoldinc0.01_OGG1_GOx30_chipseq.tsv")[1],
+                                    Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/baseline_sample_chr11_mutfoldinc0.01_OGG1_GOx30_chipseq.tsv")[1],
+                                    Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/baseline_sample_chr12_mutfoldinc0.01_OGG1_GOx30_chipseq.tsv")[1],
+                                    Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/baseline_sample_chr13_mutfoldinc0.01_OGG1_GOx30_chipseq.tsv")[1],
+                                    Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/baseline_sample_chr14_mutfoldinc0.01_OGG1_GOx30_chipseq.tsv")[1],
+                                    Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/baseline_sample_chr15_mutfoldinc0.01_OGG1_GOx30_chipseq.tsv")[1],
+                                    Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/baseline_sample_chr16_mutfoldinc0.01_OGG1_GOx30_chipseq.tsv")[1],
+                                    Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/baseline_sample_chr17_mutfoldinc0.01_OGG1_GOx30_chipseq.tsv")[1],
+                                    Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/baseline_sample_chr18_mutfoldinc0.01_OGG1_GOx30_chipseq.tsv")[1],
+                                    Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/baseline_sample_chr19_mutfoldinc0.01_OGG1_GOx30_chipseq.tsv")[1],
+                                    Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/baseline_sample_chr20_mutfoldinc0.01_OGG1_GOx30_chipseq.tsv")[1],
+                                    Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/baseline_sample_chr21_mutfoldinc0.01_OGG1_GOx30_chipseq.tsv")[1],
+                                    Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/baseline_sample_chr22_mutfoldinc0.01_OGG1_GOx30_chipseq.tsv")[1],
+                                    Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/baseline_sample_chrX_mutfoldinc0.01_OGG1_GOx30_chipseq.tsv")[1])),
                 read_tsv),
-                no = lapply(list(args[-(1:6)]), read_tsv)) %>%
+                no = lapply(list(args[-(1:6)][str_detect(args[-(1:6)], 
+                                                         paste0("_mutfoldinc", mutfoldinc, "_", dnarep_mark_simulate, ".tsv"))]), 
+                            read_tsv)) %>%
   Reduce(function(x, y) bind_rows(x, y), .) %>% 
-  ### keep only mutfold and simulated feature specified in this nf channel
+  ### ensure that we keep only mutfold and simulated feature specified in this nf channel
   filter(`mutfoldinc`==mutfoldinc & `simulated_mark`==dnarep_mark_simulate) %>% 
-  select(-mutfoldinc) %>% 
+  select(-c(chr,mutfoldinc)) %>% 
   ### sum up the mutcounts across bound chromosomes, grouping by bin profile
-  group_by(across(!contains("simulated_mutcount") & !contains("freq_trinuc32"))) %>% 
-  summarise_at(vars(contains("simulated_mutcount") | contains("freq_trinuc32")),
-               ~sum(.)) %>% 
+  group_by(across(!contains("mean_mutcount") & !matches("chr"))) %>% 
+  summarise_at(vars(contains("mean_mutcount")),
+               ~ceiling(sum(.))) %>% 
   ungroup
 
 gc()
+
+
+#####
+
+## creating sim_pos_con from baseline sample's merged chromosomes
+
+## get total mut burden at background bin in baseline sample KEEP TRINUC SEP
+bg_mut_burden = baseline_sample %>% 
+  # get only mut counts in bg bin ("low" or "bgGenome")
+  filter(get(dnarep_mark_simulate) %in% c("low", "bgGenome")) %>% 
+  group_by(tri, mb_domain) %>% 
+  # collapse bins
+  summarise(mutfoldinc_mutcount = ceiling(sum(mean_mutcount) * mutfoldinc)) %>% 
+  ungroup
+
+
+### simulate pos control samples out of the baseline_sample
+
+# store for later adding back
+baseline_sample_low_bins = baseline_sample %>%
+  filter(get(dnarep_mark_simulate) %in% c("low", "bgGenome")) %>% 
+  rename("simulated_mutcount_x-fold" = mean_mutcount)
+
+sim_pos_con = baseline_sample %>%
+  # keep only high bins to speed up, then the unaltered low bins are re-added
+  filter(get(dnarep_mark_simulate) %in% c("high", "AID_target")) %>% 
+  #### increase mutations in bins that are i) "high" repair mark abundance -to approach the baseline-, or ii) "AID_target" -to simulate an AID-SHM sample-
+  ## mutfoldinc is multiplied to the baseline sample's genome-wide mutation burden per trinuc (e.g. if baseline sample's total # mutations at ATA in target bin (e.g. AID-targets) is just 2, and in bg bin (bgGenome) is 250, then multiply to the target bin a FRACTION of the total # ATA muts of the bg bin: e.g. a 0.01 --> 2 * 0.01 * 250
+  # ceiling the mutfoldinc*mutburden ensures that it's not <1 in case mutburden was too low
+  # mean_mutcount+1 ensures that bins with 0 muts get something
+  merge(bg_mut_burden, all=T) %>% 
+  mutate(`simulated_mutcount_x-fold` = ceiling((`mean_mutcount`+1) * mutfoldinc_mutcount)) %>%
+  select(names(baseline_sample_low_bins)) %>% 
+  bind_rows(baseline_sample_low_bins) %>% 
+  # here we do leave the offset column
+  merge(offset, all = T) %>%
+  select(`simulated_mutcount_x-fold`,
+         all_of(dnarep_marks$name),
+         mb_domain,
+         tri,
+         trinuc32,
+         freq_trinuc32) %>%
+  mutate(simulated_mark = dnarep_mark_simulate)
+gc()
+########
 
 
 ## prepare tables for trinuc matching or adj, if selected
@@ -225,6 +273,14 @@ rm(sim_pos_con) ; gc()
 
 if(sum(reg_table$mutcount) >= 1){ # only do regression if there are not only 0 muts
   
+  # dna rep mark levels as factors
+  reg_table = reg_table %>% 
+    mutate_at(vars(contains(match = dnarep_marks$name)),
+              ~if(unique(.)[1] %in% c('AID_target', 'bgGenome')){
+                factor(., ordered = F, levels = c('AID_target', 'bgGenome')) # higher mut rates --> baseline
+              }else{
+                factor(., ordered = F, levels = c('low', 'high'))}) # baseline --> lower mut rates
+
   # stick to a generalized linear model for the negative binomial family
   cat(sprintf('Running regression in trinucl. mode: "%s"...\n', trinuc_mode))
   y = suppressWarnings(glm.nb(formula = formula, 
@@ -250,7 +306,7 @@ if(sum(reg_table$mutcount) >= 1){ # only do regression if there are not only 0 m
   
     cat(sprintf('WARNING: sample %s has 0 mutations: can not run regression...\n', paste0(dnarep_mark_simulate, "-", altered_level, "__muts_", mutfoldinc, "-fold")))
     
-    col_names = c("sample_id", gsub("AID_regionslow", "AID_regionsbgGenome", paste0(c(paste("estimate", dnarep_marks$name, sep = "_"), paste("conf.low", dnarep_marks$name, sep = "_"), paste("conf.high", dnarep_marks$name, sep = "_")), "low")), "theta")
+    col_names = c("sample_id", gsub("AID_regionshigh", "AID_regionsbgGenome", paste0(c(paste("estimate", dnarep_marks$name, sep = "_"), paste("conf.low", dnarep_marks$name, sep = "_"), paste("conf.high", dnarep_marks$name, sep = "_")), "high")), "theta")
     
     y_tidy = data.frame(matrix(ncol = length(col_names), nrow = 1)) %>% 
       `colnames<-`(col_names) %>% 

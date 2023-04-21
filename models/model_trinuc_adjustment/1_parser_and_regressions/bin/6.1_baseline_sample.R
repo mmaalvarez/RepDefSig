@@ -17,8 +17,9 @@ conflict_prefer("expand", "tidyr")
 
 # - For each DNA repair pathway (e.g. MMR):
 # 	- 1st) calculate the mutation burden baseline (=="baseline sample"): mean # mutations (treating each of the 96 trinuc types separately, to keep relative %s thereof) across all control samples, WITHIN each of the 2 genome BINS (i.e. high/low MMR repair abundance)
-# 	- 2nd) each simulated sample will be the "baseline sample" + an increased # mutations (×2, ×3, ×4…), but ONLY in the genome bin with 'high' activity of a mark for that repair (e.g. high MSH6)
+# 	- 2nd) each simulated sample will be the "baseline sample" + an increased # mutations (proportional to mutfoldinc), but ONLY in the genome bin with 'high' activity of a mark for that repair (e.g. high MSH6)
 # 		- again, each trinuc type treated independently to keep the relative trinuc %s
+#     - UPDATE: mutfoldinc multiplied to the baseline sample's genome-wide mutation burden per trinuc (e.g. if baseline sample's total # mutations at ATA in target bin (e.g. AID-targets) is just 2, and in bg bin (bgGenome) is 250, then multiply to the target bin a FRACTION of the total # ATA muts of the bg bin: e.g. a 0.01 --> 2 * 0.01 * 250
 # - All the simulated samples will be then run together with real ones in the NMF/VAE
 # - The simulated samples should have high exposures of the signatures with high weights for the expected mark (e.g. for "MMRdef simulated samples", high "MSH6-weight signature exposure")
 # 	- the more sensitive the model, low mut. burden-increase (e.g. ×2?) simulated samples should already show high exposures
@@ -65,7 +66,7 @@ offset = offset %>%
 
 ## load map_features (SINGLE chromosome) from 2nd process
 dfleft = ifelse(interactive(),
-                yes = Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/map_features_chr21.tsv"),
+                yes = Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/map_features_chr1.tsv"),
                 no = args[6]) %>% 
   fread %>% as_tibble %>% 
   rename("chrom" = "seqnames")
@@ -84,9 +85,9 @@ good_mappability_regions = ifelse(interactive(),
   filter(chrom == chromosome)
 
 
-## load mutation fold increases to apply on baseline sample, in this iteration
+## load "mutfoldinc"
 mutfoldinc = ifelse(interactive(),
-                    yes = "2", # i.e. mut burden at "high" bins multiplied by ×2, ×4...
+                    yes = "0.01",
                     no = args[8]) %>% 
   as.numeric
 
@@ -98,14 +99,14 @@ dnarep_mark_simulate = ifelse(interactive(),
 ## load collected median_scores from 1st process
 median_scores = ifelse(interactive(),
                        yes = lapply(list(c(Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/median_score_OGG1_GOx30_chipseq.tsv")[1],
-                                           #Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/median_score_OGG1_GOx60_chipseq.tsv")[1],
-                                           #Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/median_score_UV_XRseq_NHF1_PP64_1h_Rep1.tsv")[1],
+                                           Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/median_score_OGG1_GOx60_chipseq.tsv")[1],
+                                           Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/median_score_UV_XRseq_NHF1_PP64_1h_Rep1.tsv")[1],
                                            Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/median_score_UV_XRseq_NHF1_CPD_1h.tsv")[1],
                                            Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/median_score_XRCC4.tsv")[1],
-                                           #Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/median_score_SETD2_control.tsv")[1],
+                                           Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/median_score_SETD2_control.tsv")[1],
                                            Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/median_score_MSH6_control.tsv")[1],
                                            Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/median_score_TP53_dauno_K562.tsv")[1],
-                                           #Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/median_score_TP53_dauno_MOLM13.tsv")[1],
+                                           Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/median_score_TP53_dauno_MOLM13.tsv")[1],
                                            Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/median_score_AID_regions.tsv")[1])), 
                                     read_tsv),
                        no = lapply(list(args[-(1:9)]), read_tsv)) %>%
@@ -164,12 +165,6 @@ for(control_sample in control_samples){
                                     no = "high"),
                        # it's factor, leave as is
                        no = x)}) %>% 
-      # dna rep mark levels as ordered factors
-      mutate_at(vars(contains(match = dnarep_marks$name)),
-                ~if(unique(.)[1] %in% c('AID_target', 'bgGenome')){
-                  factor(., ordered = T, levels = c('AID_target', 'bgGenome')) # higher mut rates --> baseline
-                }else{
-                  factor(., ordered = T, levels = c('low', 'high'))}) %>% # baseline --> lower mut rates
       ### mut count
       select(-mut_id) %>% 
       table %>%
@@ -226,37 +221,12 @@ control_samples_no_outliers = control_samples_table %>%
 
 baseline_sample = control_samples_table %>% 
   filter(control_sample %in% control_samples_no_outliers) %>% 
-  select(-control_sample) %>% 
+  select(-c(control_sample, .overlap)) %>% 
   group_by(across(!contains("mutcount"))) %>% 
   summarise(mean_mutcount = mean(mutcount)) %>% 
-  ungroup
-
-
-
-### simulate pos control samples out of the baseline_sample
-sim_pos_con = baseline_sample %>% 
-  select(tri, mb_domain, all_of(dnarep_mark_simulate), mean_mutcount) %>% 
-  group_by(tri, mb_domain, !!sym(dnarep_mark_simulate)) %>% 
-  # collapse bins
-  summarise(sum_mean_mutcount = sum(mean_mutcount)) %>% 
-  # increase mutations in bins that are i) "high" repair mark abundance -to approach the baseline-, or ii) "AID_target" -to simulate an AID-SHM sample-, by "mutfoldinc" times
-  mutate("simulated_mutcount_x-fold" := ifelse(get(dnarep_mark_simulate) %in% c("high", "AID_target"),
-                                               yes = ceiling(sum_mean_mutcount * mutfoldinc),
-                                               no = ceiling(sum_mean_mutcount))) %>% 
-  # here we do leave the offset column
-  merge(offset, all = T) %>% 
-  select(starts_with("simulated_mutcount"),
-         dnarep_marks$name,
-         mb_domain,
-         tri,
-         trinuc32,
-         freq_trinuc32) %>% 
   ungroup %>% 
-  as_tibble %>% 
   mutate(chr = chromosome,
          `mutfoldinc` = mutfoldinc,
          simulated_mark = dnarep_mark_simulate)
-gc()
 
-
-write_tsv(sim_pos_con, paste0("ready_for_regression_sim_pos_con_", chromosome, "_mutfoldinc", mutfoldinc, "_", dnarep_mark_simulate, ".tsv"))
+write_tsv(baseline_sample, paste0("baseline_sample_", chromosome, "_mutfoldinc", mutfoldinc, "_", dnarep_mark_simulate, ".tsv"))

@@ -63,31 +63,30 @@ trinuc_mode = ifelse(interactive(),
 
 ## load ready_for_regression (ALL sep chromosomes) from previous process, and bind them
 merged = ifelse(interactive(),
-                yes = lapply(list(c(#Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/ready_for_regression_chr1.tsv"),
-                  #Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/ready_for_regression_chr2.tsv"),
-                  #Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/ready_for_regression_chr3.tsv"),
-                  #Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/ready_for_regression_chr4.tsv"),
-                  #Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/ready_for_regression_chr5.tsv"),
-                  #Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/ready_for_regression_chr6.tsv"),
-                  #Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/ready_for_regression_chr7.tsv"),
-                  #Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/ready_for_regression_chr8.tsv"),
-                  #Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/ready_for_regression_chr9.tsv"),
-                  #Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/ready_for_regression_chr10.tsv"),
-                  #Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/ready_for_regression_chr11.tsv"),
-                  #Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/ready_for_regression_chr12.tsv"),
-                  #Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/ready_for_regression_chr13.tsv"),
-                  #Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/ready_for_regression_chr14.tsv"),
-                  #Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/ready_for_regression_chr15.tsv"),
-                  #Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/ready_for_regression_chr16.tsv"),
-                  #Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/ready_for_regression_chr17.tsv"),
-                  #Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/ready_for_regression_chr18.tsv"),
-                  #Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/ready_for_regression_chr19.tsv"),
-                  #Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/ready_for_regression_chr20.tsv"),
-                  Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/ready_for_regression_chr21.tsv"),
-                  Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/ready_for_regression_chr22.tsv") #,
-                  #Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/ready_for_regression_chrX.tsv")
-                )),
-                read_tsv),
+                yes = lapply(list(c(Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/ready_for_regression_b668939e-7d77-504c-abfa-7b4982106ab9_chr1.tsv"),
+                                    Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/ready_for_regression_b668939e-7d77-504c-abfa-7b4982106ab9_chr2.tsv"),
+                                    Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/ready_for_regression_b668939e-7d77-504c-abfa-7b4982106ab9_chr3.tsv"),
+                                    Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/ready_for_regression_b668939e-7d77-504c-abfa-7b4982106ab9_chr4.tsv"),
+                                    Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/ready_for_regression_b668939e-7d77-504c-abfa-7b4982106ab9_chr5.tsv"),
+                                    Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/ready_for_regression_b668939e-7d77-504c-abfa-7b4982106ab9_chr6.tsv"),
+                                    Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/ready_for_regression_b668939e-7d77-504c-abfa-7b4982106ab9_chr7.tsv"),
+                                    Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/ready_for_regression_b668939e-7d77-504c-abfa-7b4982106ab9_chr8.tsv"),
+                                    Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/ready_for_regression_b668939e-7d77-504c-abfa-7b4982106ab9_chr9.tsv"),
+                                    Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/ready_for_regression_b668939e-7d77-504c-abfa-7b4982106ab9_chr10.tsv"),
+                                    Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/ready_for_regression_b668939e-7d77-504c-abfa-7b4982106ab9_chr11.tsv"),
+                                    Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/ready_for_regression_b668939e-7d77-504c-abfa-7b4982106ab9_chr12.tsv"),
+                                    Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/ready_for_regression_b668939e-7d77-504c-abfa-7b4982106ab9_chr13.tsv"),
+                                    Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/ready_for_regression_b668939e-7d77-504c-abfa-7b4982106ab9_chr14.tsv"),
+                                    Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/ready_for_regression_b668939e-7d77-504c-abfa-7b4982106ab9_chr15.tsv"),
+                                    Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/ready_for_regression_b668939e-7d77-504c-abfa-7b4982106ab9_chr16.tsv"),
+                                    Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/ready_for_regression_b668939e-7d77-504c-abfa-7b4982106ab9_chr17.tsv"),
+                                    Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/ready_for_regression_b668939e-7d77-504c-abfa-7b4982106ab9_chr18.tsv"),
+                                    Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/ready_for_regression_b668939e-7d77-504c-abfa-7b4982106ab9_chr19.tsv"),
+                                    Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/ready_for_regression_b668939e-7d77-504c-abfa-7b4982106ab9_chr20.tsv"),
+                                    Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/ready_for_regression_b668939e-7d77-504c-abfa-7b4982106ab9_chr21.tsv"),
+                                    Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/ready_for_regression_b668939e-7d77-504c-abfa-7b4982106ab9_chr22.tsv"),
+                                    Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/ready_for_regression_b668939e-7d77-504c-abfa-7b4982106ab9_chrX.tsv"))),
+                             read_tsv),
                 no = lapply(list(args[-(1:6)]), read_tsv)) %>%
   Reduce(function(x, y) bind_rows(x, y), .) %>% 
   ## keep only the sample of this channel
@@ -233,6 +232,14 @@ rm(merged) ; gc()
 
 if(sum(reg_table$mutcount) >= 1){ # only do regression if there are not only 0 muts
   
+  # dna rep mark levels as factors
+  reg_table = reg_table %>% 
+    mutate_at(vars(contains(match = dnarep_marks$name)),
+              ~if(unique(.)[1] %in% c('AID_target', 'bgGenome')){
+                factor(., ordered = F, levels = c('AID_target', 'bgGenome')) # higher mut rates --> baseline
+              }else{
+                factor(., ordered = F, levels = c('low', 'high'))}) # baseline --> lower mut rates
+  
   # stick to a generalized linear model for the negative binomial family
   cat(sprintf('Running regression in trinucl. mode: "%s"...\n', trinuc_mode))
   y = suppressWarnings(glm.nb(formula = formula, 
@@ -255,7 +262,7 @@ if(sum(reg_table$mutcount) >= 1){ # only do regression if there are not only 0 m
   
   cat(sprintf('WARNING: sample %s has 0 mutations: can not run regression...\n', sample))
   
-  col_names = c(gsub("AID_regionslow", "AID_regionsbgGenome", paste0(c(paste("estimate", dnarep_marks$name, sep = "_"), paste("conf.low", dnarep_marks$name, sep = "_"), paste("conf.high", dnarep_marks$name, sep = "_")), "low")), "sample_id", "theta")
+  col_names = c("sample_id", gsub("AID_regionshigh", "AID_regionsbgGenome", paste0(c(paste("estimate", dnarep_marks$name, sep = "_"), paste("conf.low", dnarep_marks$name, sep = "_"), paste("conf.high", dnarep_marks$name, sep = "_")), "high")), "theta")
   
   y_tidy = data.frame(matrix(ncol = length(col_names), nrow = 1)) %>% 
     `colnames<-`(col_names) %>% 

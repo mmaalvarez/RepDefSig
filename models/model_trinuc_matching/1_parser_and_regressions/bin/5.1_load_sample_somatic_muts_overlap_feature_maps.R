@@ -127,12 +127,6 @@ merged = dfright %>%
                                 no = "high"),
                    # it's factor, leave as is
                    no = x)}) %>% 
-  # dna rep mark levels as ordered factors
-  mutate_at(vars(contains(match = dnarep_marks$name)),
-            ~if(unique(.)[1] %in% c('AID_target', 'bgGenome')){
-              factor(., ordered = T, levels = c('AID_target', 'bgGenome')) # higher mut rates --> baseline
-            }else{
-              factor(., ordered = T, levels = c('low', 'high'))}) %>% # baseline --> lower mut rates
   mutate(sample_id = sample)
 
 gc()
