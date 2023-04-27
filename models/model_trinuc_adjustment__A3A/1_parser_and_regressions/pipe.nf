@@ -262,7 +262,7 @@ results_real_sample
     .println { "Regression results for all real samples saved in res/results_real_samples.tsv" }
 
 
-
+/*
 
 // simulate positive controls and run regressions for them
 // also in parallel per chromosome
@@ -373,3 +373,4 @@ process concat_chr_simposcon_run_regression {
 sim_pos_con
     .collectFile(name: 'res/simulated_positive_controls.tsv', keepHeader: true)
     .println { "Regression results for simulated positive control samples saved in res/simulated_positive_controls.tsv" }
+*/

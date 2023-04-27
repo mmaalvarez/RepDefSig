@@ -8,4 +8,4 @@ SETD2_control,/g/strcombio/fsupek_cancer3/malvarez/chromatin_info/DNA_repair__pr
 XRCC4,/g/strcombio/fsupek_cancer3/malvarez/chromatin_info/DNA_repair__protein_binding/DNA_repair/DSBR/NHEJ/XRCC4_RAD51_53BP1/XRCC4_hg19_normalized.bw	#																	DSBR/XRCC4					chip-seq	.bw
 TP53_dauno_K562,/g/strcombio/fsupek_cancer3/malvarez/chromatin_info/DNA_repair__protein_binding/TP53/gaps_score0/GSM3781507_WT_KO_Dauno_coverage_gaps-to-score-0.bed	#													TP53/DNAdam_induced/K562	chip-seq	.bed
 TP53_dauno_MOLM13,/g/strcombio/fsupek_cancer3/malvarez/chromatin_info/DNA_repair__protein_binding/TP53/gaps_score0/GSM3781523_MOLM_WT_KO_Dauno_coverage_gaps-to-score-0.bed	#												TP53/DNAdam_induced/MOLM13	chip-seq	.bed
-AID_regions,/g/strcombio/fsupek_cancer3/malvarez/WGS_tumors/somatic_variation/TCGA_PCAWG_Hartwig_CPTAC_POG_MMRFCOMMPASS/AID_SHM/0_AID_regions/AID_regions.bed
+AID_regions,/g/strcombio/fsupek_cancer3/malvarez/WGS_tumors/somatic_variation/TCGA_PCAWG_Hartwig_CPTAC_POG_MMRFCOMMPASS/SHM/AID_SHM/0_AID_regions/AID_regions.bed
