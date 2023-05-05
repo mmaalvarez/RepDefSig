@@ -107,6 +107,12 @@ empty_offset = data.frame(matrix(ncol = length(names(offset_temp)))) %>%
   expand(!!! syms(names(offset_temp)[!str_detect(names(offset_temp), "freq_trinuc32")])) %>%
   drop_na
 
+if(!is.null(empty_offset$AID_regions)){
+  empty_offset = empty_offset %>% 
+    mutate(AID_regions = gsub("low", "AID_target", AID_regions),
+           AID_regions = gsub("high", "bgGenome", AID_regions))
+}
+
 if(!is.null(empty_offset$A3A_TpCpH_hairpins)){
   empty_offset = empty_offset %>% 
     mutate(A3A_TpCpH_hairpins = gsub("low", "hairpin_TpCpH", A3A_TpCpH_hairpins),

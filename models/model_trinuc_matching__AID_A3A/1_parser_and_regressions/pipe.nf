@@ -333,8 +333,8 @@ mutation_foldincs = Channel.from(params.mutation_foldinc.tokenize(','))
 
 process concat_chr_simposcon_run_regression {
 
-    //queue = 'normal_prio_long'
-    time = 8.hour
+    queue = 'normal_prio_long'
+    time = 360.hour
     memory = { (params.memory_process6_2 + 10*(task.attempt-1)).GB }
 
     input:

@@ -189,7 +189,7 @@ trinuc_matching = function(total_trinuc_table, mut_trinuc_table,
 
     ## mark which bins have too few mutations, to ignore them for offender search (i.e. less than the total current sum of mutations (across rows AND columns) divided by the number of bins)
     too_few_mut_bins = filter(data.frame(rowSums(counts$mut_trinuc)),
-                              `rowSums.counts.mut_trinuc.` <= (sum(rowSums(counts$mut_trinuc)) / length(rownames(counts$mut_trinuc)) / 10)) %>% # WARNING: div. by 10 so that not too many bins are excluded, revisit this
+                              `rowSums.counts.mut_trinuc.` <= (sum(rowSums(counts$mut_trinuc)) / length(rownames(counts$mut_trinuc)) / 2)) %>% # WARNING: div. by 10 so that not too many bins are excluded, revisit this
       rownames
     
     ## check whether every row has been declared as unusable (would result in an emtpy 'offender')

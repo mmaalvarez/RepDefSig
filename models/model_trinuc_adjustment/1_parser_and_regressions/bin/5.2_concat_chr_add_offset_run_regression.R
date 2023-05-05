@@ -236,9 +236,22 @@ if(sum(reg_table$mutcount) >= 1){ # only do regression if there are not only 0 m
   reg_table = reg_table %>% 
     mutate_at(vars(contains(match = dnarep_marks$name)),
               ~if(unique(.)[1] %in% c('AID_target', 'bgGenome')){
-                factor(., ordered = F, levels = c('AID_target', 'bgGenome')) # higher mut rates --> baseline
+                factor(., ordered = F, levels = c('bgGenome', 'AID_target')) # x-axis:
+                # #SNVs |
+                #       | ------ <-- AID-SHM in tumor (maybe not flat, but with less negative coeff.)
+                #       | \
+                #       |  \  <-- no AID-SHM in tumor
+                #       |___\_____ 
+                #        bg  AID_targets
               }else{
-                factor(., ordered = F, levels = c('low', 'high'))}) # baseline --> lower mut rates
+                factor(., ordered = F, levels = c('low', 'high'))}) # x-axis:
+                # #SNVs |
+                #       | ------ <-- BERdef tumor (maybe not flat, but with less negative coeff.)
+                #       | \
+                #       |  \  <-- BERwt tumor
+                #       |___\_____ 
+                #        low  high
+                #        OGG1 OGG1
   
   # stick to a generalized linear model for the negative binomial family
   cat(sprintf('Running regression in trinucl. mode: "%s"...\n', trinuc_mode))
@@ -262,7 +275,7 @@ if(sum(reg_table$mutcount) >= 1){ # only do regression if there are not only 0 m
   
   cat(sprintf('WARNING: sample %s has 0 mutations: can not run regression...\n', sample))
   
-  col_names = c("sample_id", gsub("AID_regionshigh", "AID_regionsbgGenome", paste0(c(paste("estimate", dnarep_marks$name, sep = "_"), paste("conf.low", dnarep_marks$name, sep = "_"), paste("conf.high", dnarep_marks$name, sep = "_")), "high")), "theta")
+  col_names = c("sample_id", gsub("AID_regionshigh", "AID_regionsAID_target", paste0(c(paste("estimate", dnarep_marks$name, sep = "_"), paste("conf.low", dnarep_marks$name, sep = "_"), paste("conf.high", dnarep_marks$name, sep = "_")), "high")), "theta")
   
   y_tidy = data.frame(matrix(ncol = length(col_names), nrow = 1)) %>% 
     `colnames<-`(col_names) %>% 

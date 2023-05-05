@@ -107,6 +107,7 @@ median_scores = ifelse(interactive(),
                                            Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/median_score_MSH6_control.tsv")[1],
                                            Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/median_score_TP53_dauno_K562.tsv")[1],
                                            Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/median_score_TP53_dauno_MOLM13.tsv")[1],
+                                           Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/median_score_AID_regions.tsv")[1],
                                            Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/median_score_A3A_TpCpH_hairpins.tsv")[1])), 
                                     read_tsv),
                        no = lapply(list(args[-(1:9)]), read_tsv)) %>%

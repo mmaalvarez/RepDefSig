@@ -44,6 +44,7 @@ median_scores = ifelse(interactive(),
                                            Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/median_score_MSH6_control.tsv")[1],
                                            Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/median_score_TP53_dauno_K562.tsv")[1],
                                            Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/median_score_TP53_dauno_MOLM13.tsv")[1],
+                                           Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/median_score_AID_regions.tsv")[1], 
                                            Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/median_score_A3A_TpCpH_hairpins.tsv")[1])), 
                                     read_tsv),
                        no = lapply(list(args[-(1:2)]), read_tsv)) %>%
@@ -93,9 +94,11 @@ mcols(map_features_binarized_temp) = names(map_features_binarized_temp)
 map_features_binarized = map_features_binarized_temp %>% 
   as_tibble %>% 
   arrange(start) %>% 
-  mutate(X = gsub("hairpin_TpCpH", "hairpinTpCpH ", X)) %>% 
+  mutate(X = gsub("AID_", "AID ", X),
+         X = gsub("hairpin_TpCpH", "hairpinTpCpH ", X)) %>% 
   separate(X, into = feature_names, sep = "_") %>% 
-  mutate(A3A_TpCpH_hairpins = gsub("hairpinTpCpH ", "hairpin_TpCpH", A3A_TpCpH_hairpins)) %>% 
+  mutate(AID_regions = gsub("AID ", "AID_", AID_regions),
+         A3A_TpCpH_hairpins = gsub("hairpinTpCpH ", "hairpin_TpCpH", A3A_TpCpH_hairpins)) %>% 
   # add 1 bp downstream and upstream regions of width 1 or 2, so trinucs can be fetched
   mutate(start = ifelse(width <= 2,
                         start-1,

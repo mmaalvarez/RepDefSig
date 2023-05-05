@@ -40,7 +40,7 @@ dnarep_mark_simulate = ifelse(interactive(),
                 yes = "OGG1_GOx30_chipseq",
                 no = args[3])
 
-altered_level = ifelse(dnarep_mark_simulate == "AID_regions",
+altered_level = ifelse(dnarep_mark_simulate %in% c("AID_regions","A3A_TpCpH_hairpins"),
                        yes = "targets",
                        no = "high_activity")
 
@@ -129,8 +129,8 @@ baseline_sample_low_bins = baseline_sample %>%
 
 sim_pos_con = baseline_sample %>%
   # keep only high bins to speed up, then the unaltered low bins are re-added
-  filter(get(dnarep_mark_simulate) %in% c("high", "AID_target")) %>% 
-  #### increase mutations in bins that are i) "high" repair mark abundance -to approach the baseline-, or ii) "AID_target" -to simulate an AID-SHM sample-
+  filter(get(dnarep_mark_simulate) %in% c("high", "AID_target", "hairpin_TpCpH")) %>% 
+  #### increase mutations in bins that are i) "high" repair mark abundance -to approach the baseline-, or ii) "AID_target"|"hairpin_TpCpH" -to simulate an AID|A3A-SHM sample-
   ## mutfoldinc is multiplied to the baseline sample's genome-wide mutation burden per trinuc (e.g. if baseline sample's total # mutations at ATA in target bin (e.g. AID-targets) is just 2, and in bg bin (bgGenome) is 250, then multiply to the target bin a FRACTION of the total # ATA muts of the bg bin: e.g. a 0.01 --> 2 * 0.01 * 250
   # ceiling the mutfoldinc*mutburden ensures that it's not <1 in case mutburden was too low
   # mean_mutcount+1 ensures that bins with 0 muts get something
@@ -187,9 +187,11 @@ if(trinuc_mode == "matching"){
   matched_totalcounts = matched_counts$total_trinuc %>% 
     pivot_longer(cols = matches("^[A,C,G,T][C,T][A,C,G,T]$"), 
                  names_to = "trinuc32", values_to = "freq_trinuc32") %>% 
-    mutate(bin = gsub("AID_", "AID", bin)) %>% 
+    mutate(bin = gsub("AID_", "AID", bin),
+           bin = gsub("hairpin_TpCpH", "hairpinTpCpH", bin)) %>% 
     separate(bin, into = select(sim_pos_con, -c(simulated_mark, contains("mutcount"), tri, contains("trinuc32"))) %>% names) %>% 
     mutate_if(is.character, ~gsub("AIDtarget", "AID_target", .)) %>% 
+    mutate_if(is.character, ~gsub("hairpinTpCpH", "hairpin_TpCpH", .)) %>% 
     replace_na(list(freq_trinuc32 = 0)) %>% 
     # just in case there was some trinuc freq slightly below 0, make it 0
     mutate(freq_trinuc32 = ifelse(freq_trinuc32 <= -1,
@@ -202,9 +204,11 @@ if(trinuc_mode == "matching"){
   reg_table = matched_counts$mut_trinuc %>% 
     pivot_longer(cols = matches("^[A,C,G,T][C,T][A,C,G,T]$"), 
                  names_to = "trinuc32", values_to = "mutcount") %>% 
-    mutate(bin = gsub("AID_", "AID", bin)) %>% 
+    mutate(bin = gsub("AID_", "AID", bin),
+           bin = gsub("hairpin_TpCpH", "hairpinTpCpH", bin)) %>% 
     separate(bin, into = select(sim_pos_con, -c(simulated_mark, contains("mutcount"), tri, contains("trinuc32"))) %>% names) %>% 
     mutate_if(is.character, ~gsub("AIDtarget", "AID_target", .)) %>% 
+    mutate_if(is.character, ~gsub("hairpinTpCpH", "hairpin_TpCpH", .)) %>% 
     merge(matched_totalcounts, all = T) %>%
     replace_na(list(mutcount = 0)) %>% 
     # convert offset to logarithmic
@@ -224,9 +228,11 @@ if(trinuc_mode == "matching"){
 } else if(trinuc_mode == "adjustment"){
   
   reg_table = trinuc_adjustment(total_trinuc_table, mut_trinuc_table) %>% 
-    mutate(bin = gsub("AID_", "AID", bin)) %>% 
+    mutate(bin = gsub("AID_", "AID", bin),
+           bin = gsub("hairpin_TpCpH", "hairpinTpCpH", bin)) %>% 
     separate(bin, into = select(sim_pos_con, -c(simulated_mark, contains("mutcount"), tri, contains("trinuc32"))) %>% names) %>% 
-    mutate_if(is.character, ~gsub("AIDtarget", "AID_target", .)) %>%
+    mutate_if(is.character, ~gsub("AIDtarget", "AID_target", .)) %>% 
+    mutate_if(is.character, ~gsub("hairpinTpCpH", "hairpin_TpCpH", .)) %>%
     merge(distinct(select(offset, -c(tri, contains("trinuc32")))), 
           all = T) %>% 
     replace_na(list(mutcount = 0)) %>% 
@@ -276,7 +282,7 @@ if(sum(reg_table$mutcount) >= 1){ # only do regression if there are not only 0 m
   # dna rep mark levels as factors
   reg_table = reg_table %>% 
     mutate_at(vars(contains(match = dnarep_marks$name)),
-              ~if(unique(.)[1] %in% c('AID_target', 'bgGenome')){
+              ~if('AID_target' %in% unique(.)){
                 factor(., ordered = F, levels = c('bgGenome', 'AID_target')) # x-axis:
                 # #SNVs |
                 #       | ------ <-- AID-SHM in tumor (maybe not flat, but with less negative coeff.)
@@ -284,6 +290,14 @@ if(sum(reg_table$mutcount) >= 1){ # only do regression if there are not only 0 m
                 #       |  \  <-- no AID-SHM in tumor
                 #       |___\_____ 
                 #        bg  AID_targets
+              }else if('hairpin_TpCpH' %in% unique(.)){
+                factor(., ordered = F, levels = c('bgGenome', 'hairpin_TpCpH')) # x-axis:
+                # #SNVs |
+                #       | ------ <-- A3A expressed in tumor (maybe not flat, but with less negative coeff.)
+                #       | \
+                #       |  \  <-- A3A not expressed in tumor
+                #       |___\_____ 
+                #        bg  TpCpH_hairpins
               }else{
                 factor(., ordered = F, levels = c('low', 'high'))}) # x-axis:
                 # #SNVs |
@@ -319,7 +333,11 @@ if(sum(reg_table$mutcount) >= 1){ # only do regression if there are not only 0 m
   
     cat(sprintf('WARNING: sample %s has 0 mutations: can not run regression...\n', paste0(dnarep_mark_simulate, "-", altered_level, "__muts_", mutfoldinc, "-fold")))
     
-    col_names = c("sample_id", gsub("AID_regionshigh", "AID_regionsbgGenome", paste0(c(paste("estimate", dnarep_marks$name, sep = "_"), paste("conf.low", dnarep_marks$name, sep = "_"), paste("conf.high", dnarep_marks$name, sep = "_")), "high")), "theta")
+    col_names_orig = paste0(c(paste("estimate", dnarep_marks$name, sep = "_"), paste("conf.low", dnarep_marks$name, sep = "_"), paste("conf.high", dnarep_marks$name, sep = "_")), "high")
+    col_names_mod = c("sample_id", 
+                      gsub("AID_regionshigh", "AID_regionsAID_target", col_names_orig),
+                      "theta")
+    col_names = gsub("A3A_TpCpH_hairpinshigh", "A3A_TpCpH_hairpinshairpin_TpCpH", col_names_mod)
     
     y_tidy = data.frame(matrix(ncol = length(col_names), nrow = 1)) %>% 
       `colnames<-`(col_names) %>% 

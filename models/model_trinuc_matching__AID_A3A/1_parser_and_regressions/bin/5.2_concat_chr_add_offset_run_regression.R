@@ -27,7 +27,7 @@ if(interactive()){
 }
 
 sample = ifelse(interactive(),
-                yes = "c0e899b6-8479-406e-aa39-1db7281992ee", #"MSM0.103", #"MSM0.124",
+                yes = "ff0fb891-78f6-5bac-9792-2d1defdcfc74", #"MSM0.103", #"MSM0.124",
                 no = gsub("\\[|\\]", "", args[2])) # after channeling in nextflow, the sample names are contained within brackets, so remove them
 
 metadata = ifelse(interactive(),
@@ -147,8 +147,10 @@ if(trinuc_mode == "matching"){
   matched_totalcounts = matched_counts$total_trinuc %>% 
     pivot_longer(cols = matches("^[A,C,G,T][C,T][A,C,G,T]$"), 
                  names_to = "trinuc32", values_to = "freq_trinuc32") %>% 
-    mutate(bin = gsub("hairpin_TpCpH", "hairpinTpCpH", bin)) %>% 
+    mutate(bin = gsub("AID_", "AID", bin),
+           bin = gsub("hairpin_TpCpH", "hairpinTpCpH", bin)) %>% 
     separate(bin, into = select(merged, -c(mutcount, tri, contains("trinuc32"))) %>% names) %>% 
+    mutate_if(is.character, ~gsub("AIDtarget", "AID_target", .)) %>% 
     mutate_if(is.character, ~gsub("hairpinTpCpH", "hairpin_TpCpH", .)) %>% 
     replace_na(list(freq_trinuc32 = 0)) %>% 
     # just in case there was some trinuc freq slightly below 0, make it 0
@@ -162,8 +164,10 @@ if(trinuc_mode == "matching"){
   reg_table = matched_counts$mut_trinuc %>% 
     pivot_longer(cols = matches("^[A,C,G,T][C,T][A,C,G,T]$"), 
                  names_to = "trinuc32", values_to = "mutcount") %>% 
-    mutate(bin = gsub("hairpin_TpCpH", "hairpinTpCpH", bin)) %>% 
+    mutate(bin = gsub("AID_", "AID", bin),
+           bin = gsub("hairpin_TpCpH", "hairpinTpCpH", bin)) %>% 
     separate(bin, into = select(merged, -c(mutcount, tri, contains("trinuc32"))) %>% names) %>% 
+    mutate_if(is.character, ~gsub("AIDtarget", "AID_target", .)) %>% 
     mutate_if(is.character, ~gsub("hairpinTpCpH", "hairpin_TpCpH", .)) %>% 
     merge(matched_totalcounts, all = T) %>%
     replace_na(list(mutcount = 0)) %>% 
@@ -184,8 +188,10 @@ if(trinuc_mode == "matching"){
 } else if(trinuc_mode == "adjustment"){
   
   reg_table = trinuc_adjustment(total_trinuc_table, mut_trinuc_table) %>%
-    mutate(bin = gsub("hairpin_TpCpH", "hairpinTpCpH", bin)) %>% 
+    mutate(bin = gsub("AID_", "AID", bin),
+           bin = gsub("hairpin_TpCpH", "hairpinTpCpH", bin)) %>% 
     separate(bin, into = select(merged, -c(mutcount, tri, contains("trinuc32"))) %>% names) %>% 
+    mutate_if(is.character, ~gsub("AIDtarget", "AID_target", .)) %>%
     mutate_if(is.character, ~gsub("hairpinTpCpH", "hairpin_TpCpH", .)) %>%
     merge(distinct(select(offset, -c(tri, contains("trinuc32")))), 
           all = T) %>% 
@@ -235,7 +241,15 @@ if(sum(reg_table$mutcount) >= 1){ # only do regression if there are not only 0 m
   # dna rep mark levels as factors
   reg_table = reg_table %>% 
     mutate_at(vars(contains(match = dnarep_marks$name)),
-              ~if(unique(.)[1] %in% c('hairpin_TpCpH', 'bgGenome')){
+              ~if('AID_target' %in% unique(.)){
+                factor(., ordered = F, levels = c('bgGenome', 'AID_target')) # x-axis:
+                # #SNVs |
+                #       | ------ <-- AID-SHM in tumor (maybe not flat, but with less negative coeff.)
+                #       | \
+                #       |  \  <-- no AID-SHM in tumor
+                #       |___\_____ 
+                #        bg  AID_targets
+              }else if('hairpin_TpCpH' %in% unique(.)){
                 factor(., ordered = F, levels = c('bgGenome', 'hairpin_TpCpH')) # x-axis:
                 # #SNVs |
                 #       | ------ <-- A3A expressed in tumor (maybe not flat, but with less negative coeff.)
@@ -275,7 +289,11 @@ if(sum(reg_table$mutcount) >= 1){ # only do regression if there are not only 0 m
   
   cat(sprintf('WARNING: sample %s has 0 mutations: can not run regression...\n', sample))
   
-  col_names = c("sample_id", gsub("A3A_TpCpH_hairpinshigh", "A3A_TpCpH_hairpinshairpin_TpCpH", paste0(c(paste("estimate", dnarep_marks$name, sep = "_"), paste("conf.low", dnarep_marks$name, sep = "_"), paste("conf.high", dnarep_marks$name, sep = "_")), "high")), "theta")
+  col_names_orig = paste0(c(paste("estimate", dnarep_marks$name, sep = "_"), paste("conf.low", dnarep_marks$name, sep = "_"), paste("conf.high", dnarep_marks$name, sep = "_")), "high")
+  col_names_mod = c("sample_id", 
+                    gsub("AID_regionshigh", "AID_regionsAID_target", col_names_orig),
+                    "theta")
+  col_names = gsub("A3A_TpCpH_hairpinshigh", "A3A_TpCpH_hairpinshairpin_TpCpH", col_names_mod)
   
   y_tidy = data.frame(matrix(ncol = length(col_names), nrow = 1)) %>% 
     `colnames<-`(col_names) %>% 
