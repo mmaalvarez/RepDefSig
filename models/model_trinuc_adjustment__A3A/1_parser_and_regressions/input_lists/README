@@ -1,6 +1,0 @@
-WARNING the sample_ids only include 100 samples (50 with the most A3A mut cluster omikli pairs (closer than 1kb), and 50 with 0 such pairs
-
-	these are the 50 A3A-expressing and 50 no-A3A-expressing "ground truth" samples
-
-
-the "A3A mutagenesis mark" to use as variable in regrssion is the TpCpH in hairpin loops vs bgGenome

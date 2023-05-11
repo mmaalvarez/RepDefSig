@@ -1,0 +1,1 @@
+Figure XX. Clustering showing the stability for each nFact (x axis) and k (number of signatures, y axis) combination, obtained with an optimization algorithm that is based on the NMF results of 1000 permutations of the original coefficients matrix (see Methods). The optimal number of signatures is the one showing the highest stability, while prioritizing the maximum nFact value.
