@@ -1,4 +1,0 @@
-weights is not so trivial because there is also the bias term in the neural net, so you can't easily compare it. This is why we used Pearson correlations. What could be done is to: 
-
--1st) train a decision tree or random forest
--2nd) use SHAP to get some feature importance [Shapley values] for each signature ~> weights

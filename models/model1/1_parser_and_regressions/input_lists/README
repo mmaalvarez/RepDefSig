@@ -1,0 +1,31 @@
+10 lymphoid with most SBS84exp
+
+
+10 non-skin with most T(C>D)H-pairs
+
+
+10 skin with most CC>TT genome-wide
+
+
+3 RPE1 with POLH-/- + UVC
+
+	/g/strcombio/fsupek_cancer3/malvarez/WGS_tumors/somatic_variation/cell_lines/RPE1_POLH_WTvsKO/1_parse_vcfs/res/
+
+	only including here the 3 replicates that are POLH-/- + UVC treated
+
+
+147 PSCi (diverse treatments or gene-KOs)
+
+	2 nik zainal PSC cell lines
+
+		- Nik-Zainal iPSCs (induced pluripotential stem cells)
+
+			- /g/strcombio/fsupek_cancer3/malvarez/WGS_tumors/somatic_variation/cell_lines/kucab_2019/processed/data/
+		
+			- Only including 84 samples: controls + treated samples whose mutation burden is above the mean mut burden of the controls (done in kucab_2019/processed/list_treated_samples_mutburden_above_mean_of_controls.R)
+		
+		- Zou CRISPR KO cell line (mutagenesis induced by loss of a given DNA repair gene)
+
+			- /g/strcombio/fsupek_cancer3/malvarez/WGS_tumors/somatic_variation/cell_lines/zou_2021/processed/data/
+
+			- Only including 63 samples: controls + "   "	"   "   "   "

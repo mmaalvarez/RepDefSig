@@ -33,9 +33,17 @@ names_conversion_table = bind_rows(PCAWG_names_conversion_table, TCGA_names_conv
 
 
 
+########################################
+
+# 10 lymphoid with most SBS84exp
+# 10 non-skin with most T(C>D)H-pairs
+# 10 skin with most CC>TT
+# 3 RPE1 with POLH-/- + UVC
+# >80 PSCi (diverse treatments or gene-KOs)
+
+
 ### SBS84 exposure in lymph samples
-SBS84exp_lymph = read_tsv("/g/strcombio/fsupek_cancer3/malvarez/WGS_tumors/somatic_variation/TCGA_PCAWG_Hartwig_CPTAC_POG_MMRFCOMMPASS/SHM/AID_SHM/3_extract_SBS84__sort_AID_vs_nonAID_samples/lymphoid_samples_SBS84_exposure_K3.tsv") %>% 
-  arrange(desc(SBS84_raw_exp_AIDtarg_sig1)) %>% 
+top10_SBS84exp_lymph = read_tsv("/g/strcombio/fsupek_cancer3/malvarez/WGS_tumors/somatic_variation/TCGA_PCAWG_Hartwig_CPTAC_POG_MMRFCOMMPASS/SHM/AID_SHM/3_extract_SBS84__sort_AID_vs_nonAID_samples/lymphoid_samples_SBS84_exposure_K3.tsv") %>% 
   separate(Sample, into = c("rm1", "sample_id"), extra = "merge") %>% 
   mutate(sample_id = gsub(".*_", "", sample_id)) %>% 
   left_join(names_conversion_table) %>%
@@ -43,37 +51,46 @@ SBS84exp_lymph = read_tsv("/g/strcombio/fsupek_cancer3/malvarez/WGS_tumors/somat
                               sample_id,
                               sample_id2)) %>% 
   select(sample_id2, SBS84_raw_exp_AIDtarg_sig1) %>% 
-  rename("sample_id" = "sample_id2")
-
-### A3A pancancer: calc ratio between 1kbpairs_TpC2DpH and total SNVs
-A3A_1kbpairs_TpC2DpH_ratio = read_tsv("/g/strcombio/fsupek_cancer3/malvarez/WGS_tumors/somatic_variation/TCGA_PCAWG_Hartwig_CPTAC_POG_MMRFCOMMPASS/SHM/A3A_hairpins/2_count_1kbpairs_TpC2DpH_in_tumors/res/samples_A3A_1kbpairs_TpC2DpH_counted.tsv") %>% 
-  mutate(ratio = A3A_1kbpairs_TpC2DpH/total_n_SNVs)
-
-
-### create list with:
-#             - 25 lymphoid that have the most SBS84 exposure (AID mutagenesis)
-#             - 25 lymphoid that have the least SBS84 exposure
-#             - 25 pancancer that have the most A3A mutagenesis: more A3A T(C>D)H pairs closer than 1kb (proportional to the total mut burden)
-#             - 25 pancancer that have the least A3A mutagenesis: 0 1kbpairs_TpC2DpH AND the highest mut burden
-
-top25_SBS84 = SBS84exp_lymph %>% 
-  slice_head(n = 25) %>% 
-  select(sample_id)
-bottom25_SBS84 = SBS84exp_lymph %>% 
-  slice_tail(n = 25) %>% 
-  select(sample_id)
-top25_A3A = A3A_1kbpairs_TpC2DpH_ratio %>% 
-  arrange(desc(ratio)) %>% 
-  slice_head(n = 25) %>% 
-  select(sample_id)
-bottom25_A3A = A3A_1kbpairs_TpC2DpH_ratio %>%  
-  filter(A3A_1kbpairs_TpC2DpH == 0) %>% 
-  arrange(desc(total_n_SNVs)) %>% 
-  slice_head(n = 25) %>% 
+  rename("sample_id" = "sample_id2") %>% 
+  # top10_SBS84
+  arrange(desc(SBS84_raw_exp_AIDtarg_sig1)) %>% 
+  slice_head(n = 10) %>% 
   select(sample_id)
 
-write_csv(bind_rows(top25_SBS84,
-                    bottom25_SBS84,
-                    top25_A3A,
-                    bottom25_A3A), 
+
+### A3A pancancer (non-skin) 1kbpairs_TpC2DpH
+top10_A3A_1kbpairs_TpC2DpH = read_tsv("/g/strcombio/fsupek_cancer3/malvarez/WGS_tumors/somatic_variation/TCGA_PCAWG_Hartwig_CPTAC_POG_MMRFCOMMPASS/SHM/A3A_hairpins/2_count_1kbpairs_TpC2DpH_in_tumors/res/samples_A3A_1kbpairs_TpC2DpH_counted.tsv") %>% 
+  # top10_A3A
+  arrange(desc(TpC2DpH_pairs)) %>% 
+  slice_head(n = 10) %>% 
+  select(sample_id)
+
+
+### SKIN samples (for CTCF UV)
+samples_in_data_folder = read_csv("/g/strcombio/fsupek_cancer3/malvarez/WGS_tumors/somatic_variation/TCGA_PCAWG_Hartwig_CPTAC_POG_MMRFCOMMPASS/metadata/sample_ids_tables/sample_ids_in_data_folder.csv", col_names = F)$X1
+samples_skin = read_tsv("../../../../../metadata/metadatacomb_metadata_final_6datasets__noconsent_44plus11_samples_removed.csv") %>% 
+  filter(sample_id %in% samples_in_data_folder | sample_id_2 %in% samples_in_data_folder) %>% 
+  # keep ONLY skin samples (to ensure that UV was acting on 5'-CC-3')
+  filter(tissue == "skin" | str_detect(OriginalType, "[M,m]elanoma"))
+
+top10_UV_skin = read_tsv("/g/strcombio/fsupek_cancer3/malvarez/WGS_tumors/somatic_variation/TCGA_PCAWG_Hartwig_CPTAC_POG_MMRFCOMMPASS/SHM/CTCF_cohesin/2_count_CC2TT_genomewide_in_tumors/res/samples_CC2TT_genomewide_counted.tsv") %>% 
+  filter(sample_id %in% samples_skin) %>% 
+  # top10_UV
+  arrange(desc(CC2TT)) %>% 
+  slice_head(n = 10) %>% 
+  select(sample_id)
+
+
+### POLH-/- UVC, iPSC Kucab, and iPSC Zou
+
+top_cell_lines = read_tsv("cell_lines_samples.tsv")
+
+
+
+### bind and write
+
+write_csv(bind_rows(top10_SBS84exp_lymph,
+                    top10_A3A_1kbpairs_TpC2DpH,
+                    top10_UV_skin,
+                    top_cell_lines), 
           "sample_ids.csv", col_names = F)

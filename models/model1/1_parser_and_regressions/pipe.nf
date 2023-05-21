@@ -94,7 +94,7 @@ map_features.into{map_features_for_binarize_scores; map_features_for_process5_1;
 process binarize_scores {
 
     time = 9.hour
-    memory = { (params.memory_process3 + 68*(task.attempt-1)).GB }
+    memory = { (params.memory_process3 + 40*(task.attempt-1)).GB }
 
     input:
     path 'chromatin_features' from params.chromatin_features
@@ -220,11 +220,10 @@ process load_sample_somatic_muts_overlap_feature_maps {
 process real_data_concat_chr_add_offset_run_regression {
 
     //queue = 'normal_prio_long'
-    time = 8.hour
+    time = 24.hour
     memory = { (params.memory_process5_2 + 4*(task.attempt-1)).GB }
 
     input:
-    path 'utils' from params.utils
     val sample from sample_name_for_5_2
     val metadata from params.metadata
     path dnarep_marks from params.dnarep_marks
@@ -244,14 +243,14 @@ process real_data_concat_chr_add_offset_run_regression {
         then
             # there is a conda environment named "R"
             conda activate R
-            Rscript $PWD/bin/5.2_concat_chr_add_offset_run_regression.R ${utils} ${sample} ${metadata} ${dnarep_marks} ${offset} ${trinuc_mode} ${ready_for_regression} 
+            Rscript $PWD/bin/5.2_concat_chr_add_offset_run_regression.R ${sample} ${metadata} ${dnarep_marks} ${offset} ${trinuc_mode} ${ready_for_regression} 
         else
             # no conda environment named "R"
-            Rscript $PWD/bin/5.2_concat_chr_add_offset_run_regression.R ${utils} ${sample} ${metadata} ${dnarep_marks} ${offset} ${trinuc_mode} ${ready_for_regression} 
+            Rscript $PWD/bin/5.2_concat_chr_add_offset_run_regression.R ${sample} ${metadata} ${dnarep_marks} ${offset} ${trinuc_mode} ${ready_for_regression} 
         fi
     else
         # no conda
-        Rscript $PWD/bin/5.2_concat_chr_add_offset_run_regression.R ${utils} ${sample} ${metadata} ${dnarep_marks} ${offset} ${trinuc_mode} ${ready_for_regression} 
+        Rscript $PWD/bin/5.2_concat_chr_add_offset_run_regression.R ${sample} ${metadata} ${dnarep_marks} ${offset} ${trinuc_mode} ${ready_for_regression} 
     fi
     """
 }
@@ -333,12 +332,11 @@ mutation_foldincs = Channel.from(params.mutation_foldinc.tokenize(','))
 
 process concat_chr_simposcon_run_regression {
 
-    queue = 'normal_prio_long'
-    time = 360.hour
+    //queue = 'normal_prio_long'
+    time = 24.hour//360.hour
     memory = { (params.memory_process6_2 + 10*(task.attempt-1)).GB }
 
     input:
-    path 'utils' from params.utils
     path dnarep_marks from params.dnarep_marks
     path offset from offset_table_for_process6_1 // from 4th process
     val trinuc_mode from params.trinuc_mode
@@ -357,14 +355,14 @@ process concat_chr_simposcon_run_regression {
         then
             # there is a conda environment named "R"
             conda activate R
-            Rscript $PWD/bin/6.2_concat_chr_simposcon_run_regression.R ${utils} ${dnarep_marks} ${name} ${mutation_foldinc} ${offset} ${trinuc_mode} ${baseline_sample}
+            Rscript $PWD/bin/6.2_concat_chr_simposcon_run_regression.R ${dnarep_marks} ${name} ${mutation_foldinc} ${offset} ${trinuc_mode} ${baseline_sample}
         else
             # no conda environment named "R"
-            Rscript $PWD/bin/6.2_concat_chr_simposcon_run_regression.R ${utils} ${dnarep_marks} ${name} ${mutation_foldinc} ${offset} ${trinuc_mode} ${baseline_sample}
+            Rscript $PWD/bin/6.2_concat_chr_simposcon_run_regression.R ${dnarep_marks} ${name} ${mutation_foldinc} ${offset} ${trinuc_mode} ${baseline_sample}
         fi
     else
         # no conda
-        Rscript $PWD/bin/6.2_concat_chr_simposcon_run_regression.R ${utils} ${dnarep_marks} ${name} ${mutation_foldinc} ${offset} ${trinuc_mode} ${baseline_sample}
+        Rscript $PWD/bin/6.2_concat_chr_simposcon_run_regression.R ${dnarep_marks} ${name} ${mutation_foldinc} ${offset} ${trinuc_mode} ${baseline_sample}
     fi
     """
 }

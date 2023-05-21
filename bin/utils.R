@@ -140,18 +140,17 @@ parse_feature_files = function(features_table,
 
 ###########################################################################################################################
 
-### function for matching mutated trinucleotide (32) proportions between genomic bins
-# takes mutation count dataframe with N rows (1 per genomic bin, e.g. RT6-OGG1low-UVhigh-...) × 32 trinuc type columns
-# removes mut counts, so that mutated trinucleotide proportions are "matched" across bins
-# it also removes accordingly the total trinuc counts that exist in that bin, so that the offset will also account for the matching
+### function for matching trinucleotide(32) proportions between genomic coordinates
+# takes trinucleotide(32) count dataframe with N rows (1 per genomic coordinate, e.g. chr1_1_237572_bgGenome, chr1_237573_237942_CTCF_cohesin_peak...) × 32 trinuc type columns
+# removes trinucs(32) counts, so that trinucs(32) proportions are "matched" across all bins
 # modified from marina/fran's
-# can be imported by 5.2 and 6.2
 
-trinuc_matching = function(total_trinuc_table, mut_trinuc_table, 
-                           stoppingCriterion = 0.01, # desired Euclidean score (max. distance between any bin's trinuc frequencies and all-bin-average trinuc frequencies)
-                           maxIter = 20000*length(total_trinuc_table), # to prevent endless loops (in reality this can be a very high #, this works quite fast)
-                           n_finish_tokens = 1000,
-                           max_fraction_removed_muts = 0.25){
+trinuc_matching = function(full_tracks_trinuc32_freq, 
+                           stoppingCriterion = 0.001, # desired Euclidean score (max. overall distance between any bin's trinuc frequencies and all-bin-average trinuc frequencies)
+                           maxIter = 20000*length(full_tracks_trinuc32_freq), # to prevent endless loops (in reality this can be a very high #, this works quite fast)
+                           max_fraction_removed_trinucs = 0.5, # don't allow to remove more total trinucleotide counts than this proportion of the total original trinucleotide counts
+                           acceleration_score = 1, # multiplied to the n of counts to be removed at each iteration
+                           n_finish_tokens = 1000){ # maybe not needed
   ## auxiliar functions
   rowNorm = function(m){t(apply(m, 1, function(x){x/sum(x)}))} # normalize each row to sum to 1
   euclidean = function(a, b){sqrt(sum((a-b)^2))} 
@@ -159,13 +158,12 @@ trinuc_matching = function(total_trinuc_table, mut_trinuc_table,
   ## initialize constants/variables
   euclidean_score = 10000000000000000000 # init as an absurdly large value
   mineuclidean_score = euclidean_score
-  counts = list("total_trinuc" = total_trinuc_table, 
-                "mut_trinuc" = mut_trinuc_table)
+  counts = full_tracks_trinuc32_freq
   counts_mineuclidean = counts
   finish_token = 0
-  removed_muts = 0
-  total_orig_muts = sum(rowSums(counts$mut_trinuc))
-  max_removed_muts = total_orig_muts * max_fraction_removed_muts
+  removed_trinucs = 0
+  total_orig_trinucs = sum(rowSums(counts))
+  max_removed_trinucs = total_orig_trinucs * max_fraction_removed_trinucs
   iter = 0
   start_time = Sys.time()
 
@@ -180,22 +178,23 @@ trinuc_matching = function(total_trinuc_table, mut_trinuc_table,
       break
     }  
     
-    ## check if we have already removed too many mutations
-    if(removed_muts > max_removed_muts){
+    ## check if we have already removed too many trinucs
+    if(removed_trinucs > max_removed_trinucs){
       counts = counts_mineuclidean
-      cat(sprintf("Stopping optimization at iter %i/%i - %.02f%% of the %i original mutations have already been removed -- Exiting and returning min Euclidean score results (%f)\nAnalysis terminated after %s\n", iter, maxIter, removed_muts/total_orig_muts*100, total_orig_muts, mineuclidean_score, paste(round(Sys.time() - start_time, 2), units(Sys.time() - start_time))))
+      cat(sprintf("Stopping optimization at iter %i/%i - %.02f%% of the %f original trinucs have already been removed -- Exiting and returning min Euclidean score results (%f)\nAnalysis terminated after %s\n", iter, maxIter, removed_trinucs/total_orig_trinucs*100, total_orig_trinucs, mineuclidean_score, paste(round(Sys.time() - start_time, 2), units(Sys.time() - start_time))))
       break
     }
 
-    ## mark which bins have too few mutations, to ignore them for offender search (i.e. less than the total current sum of mutations (across rows AND columns) divided by the number of bins)
-    too_few_mut_bins = filter(data.frame(rowSums(counts$mut_trinuc)),
-                              `rowSums.counts.mut_trinuc.` <= (sum(rowSums(counts$mut_trinuc)) / length(rownames(counts$mut_trinuc)) / 2)) %>% # WARNING: div. by 10 so that not too many bins are excluded, revisit this
+    ## mark which bins have too few trinucs, to ignore them for offender search (i.e. less than the total current sum of trinucs (across rows AND columns) divided by the number of bins)
+    too_few_trinuc_bins = filter(data.frame(rowSums(counts)),
+                                 # WARNING: dividing by 2 so that not too many bins are excluded
+                                 `rowSums.counts.` <= (sum(rowSums(counts)) / length(rownames(counts)) / 2)) %>%
       rownames
     
     ## check whether every row has been declared as unusable (would result in an emtpy 'offender')
-    if(length(rownames(counts$mut_trinuc)) - length(too_few_mut_bins) <= 0){
+    if(length(rownames(counts)) - length(too_few_trinuc_bins) <= 0){
       counts = counts_mineuclidean
-      cat(sprintf("ERROR: Cannot continue optimization at iter %i/%i - 'too_few_mut_bins' comprises all possible bins, so no offender bin can be defined -- Exiting and returning min Euclidean score results (%f)\nAnalysis terminated after %s\n", iter, maxIter, mineuclidean_score, paste(round(Sys.time() - start_time, 2), units(Sys.time() - start_time))))
+      cat(sprintf("ERROR: Cannot continue optimization at iter %i/%i - 'too_few_trinuc_bins' comprises all possible bins, so no offender bin can be defined -- Exiting and returning min Euclidean score results (%f)\nAnalysis terminated after %s\n", iter, maxIter, mineuclidean_score, paste(round(Sys.time() - start_time, 2), units(Sys.time() - start_time))))
       break
     }
 
@@ -203,11 +202,11 @@ trinuc_matching = function(total_trinuc_table, mut_trinuc_table,
     ## get OFFENDER ROW WITH CORRECTABLE COLUMN
     
     ## all rows are used for the "baseline mean frequencies"
-    meanFreqs = colMeans(rowNorm(counts$mut_trinuc), na.rm = T)
-    # ...but the 'too_few_mut_bins' are excluded from being candidates for offender...
-    freqs_not_too_few_mut_bins = rownames_to_column(counts$mut_trinuc, "bin") %>% 
-      ## ...so filter out bins (rows) with too few mutations
-      filter(! bin %in% too_few_mut_bins) %>% 
+    meanFreqs = colMeans(rowNorm(counts), na.rm = T)
+    # ...but the 'too_few_trinuc_bins' are excluded from being candidates for offender...
+    freqs_not_too_few_trinuc_bins = rownames_to_column(counts, "bin") %>% 
+      ## ...so filter out bins (rows) with too few trinucs
+      filter(! bin %in% too_few_trinuc_bins) %>% 
       column_to_rownames("bin") %>% 
       rowNorm()
     
@@ -218,9 +217,9 @@ trinuc_matching = function(total_trinuc_table, mut_trinuc_table,
     while (got_offender_row_corr_col == F){
       
       # find the 'offender' row, which is the row most different from the meanFreqs vector
-      offender_name = which.max(apply(freqs_not_too_few_mut_bins, 1, function(x){ euclidean(x, meanFreqs) })) %>% # note that the meanFreqs DOES use ALL rows
+      offender_name = which.max(apply(freqs_not_too_few_trinuc_bins, 1, function(x){ euclidean(x, meanFreqs) })) %>% # note that the meanFreqs DOES use ALL rows
         names()
-      offender_row = rownames_to_column(counts$mut_trinuc, "bin") %>% 
+      offender_row = rownames_to_column(counts, "bin") %>% 
         filter(bin == offender_name) %>% 
         column_to_rownames("bin")
       offender_row_freqs = rowNorm(offender_row)
@@ -257,7 +256,7 @@ trinuc_matching = function(total_trinuc_table, mut_trinuc_table,
           if(length(diffs) == 0){
   
             # don't use this bin anymore as offender
-            too_few_mut_bins = c(too_few_mut_bins, offender_name)
+            too_few_trinuc_bins = c(too_few_trinuc_bins, offender_name)
             
             cat(sprintf("WARNING: At iter %i/%i, removed all trinuc from 'diffs'; Bin '%s' is not used anymore as 'offender' bin - Euclidean score: %f\n%s have passed\n", iter, maxIter, offender_name, as.numeric(euclidean_score), paste(round(Sys.time() - start_time, 2), units(Sys.time() - start_time))))
           
@@ -268,9 +267,9 @@ trinuc_matching = function(total_trinuc_table, mut_trinuc_table,
         }
       }
   
-      if(length(rownames(counts$mut_trinuc)) - length(too_few_mut_bins) <= 0){
+      if(length(rownames(counts)) - length(too_few_trinuc_bins) <= 0){
         counts = counts_mineuclidean
-        cat(sprintf("ERROR: Cannot continue optimization at iter %i/%i - 'too_few_mut_bins' comprises all possible bins, so no offender bin can be defined -- Exiting and returning min Euclidean score results (%f)\nAnalysis terminated after %s\n", iter, maxIter, mineuclidean_score, paste(round(Sys.time() - start_time, 2), units(Sys.time() - start_time))))
+        cat(sprintf("ERROR: Cannot continue optimization at iter %i/%i - 'too_few_trinuc_bins' comprises all possible bins, so no offender bin can be defined -- Exiting and returning min Euclidean score results (%f)\nAnalysis terminated after %s\n", iter, maxIter, mineuclidean_score, paste(round(Sys.time() - start_time, 2), units(Sys.time() - start_time))))
         break
       }
     }
@@ -292,10 +291,10 @@ trinuc_matching = function(total_trinuc_table, mut_trinuc_table,
   
 
     ###############################
-    ### subtract mutations from a trinuc of the offender bin
+    ### subtract counts from a trinuc of the offender bin
     
     ### note this adjustment (subtraction) is too conservative, but by iterating it should converge to the right value
-    subtractThis = as.numeric(round(diffs[correctableColIndex] * sum(offender_row)))
+    subtractThis = as.numeric(round(diffs[correctableColIndex] * sum(offender_row))) * acceleration_score
     
     if ( subtractThis == 0 ) {
       # try ×'n_finish_tokens' times more
@@ -311,51 +310,24 @@ trinuc_matching = function(total_trinuc_table, mut_trinuc_table,
     }
     
     ## now simply decrease counts in the responsible column to get closer to the mean
-    counts$mut_trinuc = rownames_to_column(counts$mut_trinuc, "bin") %>% 
+    counts = rownames_to_column(counts, "bin") %>% 
       mutate_at(vars(all_of(correctableCol)),
                 ~ifelse(bin == offender_name,
                         . + subtractThis,
                         .)) %>% 
       column_to_rownames("bin")
     
-    # also at the corresponding total trinuc counts
-    counts$total_trinuc = rownames_to_column(counts$total_trinuc, "bin") %>% 
-      mutate_at(vars(all_of(correctableCol)),
-                ~ifelse(bin == offender_name,
-                        . + subtractThis,
-                        .)) %>% 
-      column_to_rownames("bin")
-    
-    removed_muts = removed_muts + abs(subtractThis)
+    removed_trinucs = removed_trinucs + abs(subtractThis)
     
 
-    ## output log every 1000th iter
-    if(iter %% 1000 == 0){
-      cat( sprintf("Running iter %i/%i... Subtracted %i muts from trinuc %s at bin '%s' - %.02f%% muts have been removed - Euclidean score: %f\n%s have passed\n", iter, maxIter, abs(as.numeric(subtractThis)), correctableCol, offender_name, removed_muts/total_orig_muts*100, euclidean_score, paste(round(Sys.time() - start_time, 2), units(Sys.time() - start_time))))
+    ## output log every 100th iter
+    if(iter %% 100 == 0){
+      cat( sprintf("Running iter %i/%i... Subtracted %i %s at bin '%s' - %.02f%% trinucs have been removed - Euclidean score: %f\n%s have passed\n", iter, maxIter, abs(as.numeric(subtractThis)), correctableCol, offender_name, removed_trinucs/total_orig_trinucs*100, euclidean_score, paste(round(Sys.time() - start_time, 2), units(Sys.time() - start_time))))
     }
     
     ## keep iterating...
   }
   
-  ## return final counts_mineuclidean tables (both the total trinuc and the mutated trinuc tables)
-  return(lapply(counts, 
-                rownames_to_column, "bin"))
-}
-
-
-
-###############################################################################
-## ALTERNATIVE to MATCHING: adjustment based on dividing # mutated trinucleotides by the total (# mutated + # non-mutated + 1 dummy count) per bin, sum fractions, and multiply by the original total # mutations in that bin
-# faster (no iterations)
-# should keep signal (ratios of mutations between bins) less altered
-# can be imported by 5.2 and 6.2
-
-trinuc_adjustment = function(total_trinuc_table, mut_trinuc_table){
-  
-  adjusted_mutcounts = round(rowSums(mut_trinuc_table/(total_trinuc_table+1) * rowSums(mut_trinuc_table))) %>% 
-    data.frame %>% 
-    `colnames<-`("mutcount") %>% 
-    rownames_to_column("bin")
-  
-  return(adjusted_mutcounts)
+  ## return final counts_mineuclidean tables
+  return(counts)
 }

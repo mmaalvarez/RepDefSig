@@ -1,8 +1,0 @@
-### created list with:
-- 25 lymphoid that have the most SBS84 exposure (AID mutagenesis ground truth)
-- 25 lymphoid that have the least SBS84 exposure
-- 25 pancancer that have the most A3A mutagenesis: more A3A T(C>D)H pairs closer than 1kb, proportional to the total mut burden (A3A mutagenesis ground truth)
-- 25 pancancer that have the least A3A mutagenesis: 0 1kbpairs_TpC2DpH AND the highest mut burden
-
-# the "AID mutagenesis mark" to use as variable in regression is the n mutations in AID target regions vs in bgGenome
-# the "A3A mutagenesis mark" to use as variable in regression is the TpCpH in hairpin loops vs in bgGenome
