@@ -131,6 +131,8 @@ process binarize_scores {
 
 process offset {
 
+    publishDir "$PWD/../2_signature_extraction_and_plotting/1_QC/", mode: 'copy'
+
     time = 1.hour
     memory = { (params.memory_process4 + 5*(task.attempt-1)).GB }
 
@@ -139,6 +141,7 @@ process offset {
 
     output:
     file 'offset.tsv' into offset_table
+    file 'trinuc_dist_QC.jpg'
 
     """
     #!/usr/bin/env bash
@@ -227,8 +230,8 @@ process real_data_concat_chr_add_offset_run_regression {
     val sample from sample_name_for_5_2
     val metadata from params.metadata
     path dnarep_marks from params.dnarep_marks
+    path 'chromatin_features' from params.chromatin_features
     path offset from offset_table_for_process5_2 // from 4th process
-    val trinuc_mode from params.trinuc_mode
     path ready_for_regression from ready_for_regression_single_chromosome.collect() // rowbind chromosomes (and all samples, each sample will be filtered in R script) from previous process
 
     output:
@@ -243,14 +246,14 @@ process real_data_concat_chr_add_offset_run_regression {
         then
             # there is a conda environment named "R"
             conda activate R
-            Rscript $PWD/bin/5.2_concat_chr_add_offset_run_regression.R ${sample} ${metadata} ${dnarep_marks} ${offset} ${trinuc_mode} ${ready_for_regression} 
+            Rscript $PWD/bin/5.2_concat_chr_add_offset_run_regression.R ${sample} ${metadata} ${dnarep_marks} ${chromatin_features} ${offset} ${ready_for_regression} 
         else
             # no conda environment named "R"
-            Rscript $PWD/bin/5.2_concat_chr_add_offset_run_regression.R ${sample} ${metadata} ${dnarep_marks} ${offset} ${trinuc_mode} ${ready_for_regression} 
+            Rscript $PWD/bin/5.2_concat_chr_add_offset_run_regression.R ${sample} ${metadata} ${dnarep_marks} ${chromatin_features} ${offset} ${ready_for_regression} 
         fi
     else
         # no conda
-        Rscript $PWD/bin/5.2_concat_chr_add_offset_run_regression.R ${sample} ${metadata} ${dnarep_marks} ${offset} ${trinuc_mode} ${ready_for_regression} 
+        Rscript $PWD/bin/5.2_concat_chr_add_offset_run_regression.R ${sample} ${metadata} ${dnarep_marks} ${chromatin_features} ${offset} ${ready_for_regression} 
     fi
     """
 }
@@ -338,8 +341,8 @@ process concat_chr_simposcon_run_regression {
 
     input:
     path dnarep_marks from params.dnarep_marks
+    path 'chromatin_features' from params.chromatin_features
     path offset from offset_table_for_process6_1 // from 4th process
-    val trinuc_mode from params.trinuc_mode
     set name, path, mutation_foldinc from dnarep_marks_simulate.combine(mutation_foldincs) // nest mutation_foldincs within dnarep_marks_simulate
     path baseline_sample from baseline_sample_single_chromosome.collect() // combine chromosomes from previous process
 
@@ -355,14 +358,14 @@ process concat_chr_simposcon_run_regression {
         then
             # there is a conda environment named "R"
             conda activate R
-            Rscript $PWD/bin/6.2_concat_chr_simposcon_run_regression.R ${dnarep_marks} ${name} ${mutation_foldinc} ${offset} ${trinuc_mode} ${baseline_sample}
+            Rscript $PWD/bin/6.2_concat_chr_simposcon_run_regression.R ${dnarep_marks} ${chromatin_features} ${name} ${mutation_foldinc} ${offset} ${baseline_sample}
         else
             # no conda environment named "R"
-            Rscript $PWD/bin/6.2_concat_chr_simposcon_run_regression.R ${dnarep_marks} ${name} ${mutation_foldinc} ${offset} ${trinuc_mode} ${baseline_sample}
+            Rscript $PWD/bin/6.2_concat_chr_simposcon_run_regression.R ${dnarep_marks} ${chromatin_features} ${name} ${mutation_foldinc} ${offset} ${baseline_sample}
         fi
     else
         # no conda
-        Rscript $PWD/bin/6.2_concat_chr_simposcon_run_regression.R ${dnarep_marks} ${name} ${mutation_foldinc} ${offset} ${trinuc_mode} ${baseline_sample}
+        Rscript $PWD/bin/6.2_concat_chr_simposcon_run_regression.R ${dnarep_marks} ${chromatin_features} ${name} ${mutation_foldinc} ${offset} ${baseline_sample}
     fi
     """
 }

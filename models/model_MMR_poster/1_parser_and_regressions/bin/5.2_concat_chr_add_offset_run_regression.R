@@ -20,7 +20,7 @@ conflict_prefer("expand", "tidyr")
 args = commandArgs(trailingOnly=TRUE)
 
 sample = ifelse(interactive(),
-                yes = "ff0fb891-78f6-5bac-9792-2d1defdcfc74", #"MSM0.103", #"MSM0.124",
+                yes = "6faf3507-bacc-5782-b834-f48c89fc10c7", #"MSM0.103", #"MSM0.124",
                 no = gsub("\\[|\\]", "", args[1])) # after channeling in nextflow, the sample names are contained within brackets, so remove them
 
 metadata = ifelse(interactive(),
@@ -37,22 +37,22 @@ dnarep_marks = ifelse(interactive(),
                       no = args[3]) %>%
   read_csv(comment = "#")
 
+chromatin_features = ifelse(interactive(),
+                            yes = "../input_lists/chromatin_features.csv",
+                            no = args[4]) %>%
+  read_csv(comment = "#")
+
 # load offset from 3rd process
 offset = ifelse(interactive(),
-                yes = Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/offset.tsv")[1],
-                no = args[4]) %>% 
+                yes = Sys.glob("offset.tsv")[1],
+                no = args[5]) %>% 
   read_tsv
-# rename the chromatin environment column (typically 'RepliSeq') to match the "mb_domain" name given to the general mutation table
-colnames(offset)[1] = "mb_domain"
-offset = offset %>% 
-  mutate(mb_domain = factor(mb_domain))
-
-
-## type of trinuc modification, if any
-trinuc_mode = ifelse(interactive(),
-                     yes = "matching",
-                     no = args[5])
-
+# rename the chromatin environment column (if there is any, typically 'RepliSeq') to match the "mb_domain" name given to the general mutation table
+if(length(chromatin_features) == 1){
+  colnames(offset)[1] = "mb_domain"
+  offset = offset %>% 
+    mutate(mb_domain = factor(mb_domain, ordered = T))
+}
 
 ## load ready_for_regression (ALL sep chromosomes) from previous process, and bind them
 all_chr_sample_of_interest = args[-(1:5)] %>% 
@@ -61,29 +61,30 @@ all_chr_sample_of_interest = args[-(1:5)] %>%
   pull(file_path_chr_sample_of_interest)
 
 merged = ifelse(interactive(),
-                yes = lapply(list(c(Sys.glob(paste0("../work/[[:alnum:]][[:alnum:]]/*/ready_for_regression_", sample, "_chr1.tsv"))[1],
-                                    Sys.glob(paste0("../work/[[:alnum:]][[:alnum:]]/*/ready_for_regression_", sample, "_chr2.tsv"))[1],
-                                    Sys.glob(paste0("../work/[[:alnum:]][[:alnum:]]/*/ready_for_regression_", sample, "_chr3.tsv"))[1],
-                                    Sys.glob(paste0("../work/[[:alnum:]][[:alnum:]]/*/ready_for_regression_", sample, "_chr4.tsv"))[1],
-                                    Sys.glob(paste0("../work/[[:alnum:]][[:alnum:]]/*/ready_for_regression_", sample, "_chr5.tsv"))[1],
-                                    Sys.glob(paste0("../work/[[:alnum:]][[:alnum:]]/*/ready_for_regression_", sample, "_chr6.tsv"))[1],
-                                    Sys.glob(paste0("../work/[[:alnum:]][[:alnum:]]/*/ready_for_regression_", sample, "_chr7.tsv"))[1],
-                                    Sys.glob(paste0("../work/[[:alnum:]][[:alnum:]]/*/ready_for_regression_", sample, "_chr8.tsv"))[1],
-                                    Sys.glob(paste0("../work/[[:alnum:]][[:alnum:]]/*/ready_for_regression_", sample, "_chr9.tsv"))[1],
-                                    Sys.glob(paste0("../work/[[:alnum:]][[:alnum:]]/*/ready_for_regression_", sample, "_chr10.tsv"))[1],
-                                    Sys.glob(paste0("../work/[[:alnum:]][[:alnum:]]/*/ready_for_regression_", sample, "_chr11.tsv"))[1],
-                                    Sys.glob(paste0("../work/[[:alnum:]][[:alnum:]]/*/ready_for_regression_", sample, "_chr12.tsv"))[1],
-                                    Sys.glob(paste0("../work/[[:alnum:]][[:alnum:]]/*/ready_for_regression_", sample, "_chr13.tsv"))[1],
-                                    Sys.glob(paste0("../work/[[:alnum:]][[:alnum:]]/*/ready_for_regression_", sample, "_chr14.tsv"))[1],
-                                    Sys.glob(paste0("../work/[[:alnum:]][[:alnum:]]/*/ready_for_regression_", sample, "_chr15.tsv"))[1],
-                                    Sys.glob(paste0("../work/[[:alnum:]][[:alnum:]]/*/ready_for_regression_", sample, "_chr16.tsv"))[1],
-                                    Sys.glob(paste0("../work/[[:alnum:]][[:alnum:]]/*/ready_for_regression_", sample, "_chr17.tsv"))[1],
-                                    Sys.glob(paste0("../work/[[:alnum:]][[:alnum:]]/*/ready_for_regression_", sample, "_chr18.tsv"))[1],
-                                    Sys.glob(paste0("../work/[[:alnum:]][[:alnum:]]/*/ready_for_regression_", sample, "_chr19.tsv"))[1],
-                                    Sys.glob(paste0("../work/[[:alnum:]][[:alnum:]]/*/ready_for_regression_", sample, "_chr20.tsv"))[1],
-                                    Sys.glob(paste0("../work/[[:alnum:]][[:alnum:]]/*/ready_for_regression_", sample, "_chr21.tsv"))[1],
-                                    Sys.glob(paste0("../work/[[:alnum:]][[:alnum:]]/*/ready_for_regression_", sample, "_chr22.tsv"))[1],
-                                    Sys.glob(paste0("../work/[[:alnum:]][[:alnum:]]/*/ready_for_regression_", sample, "_chrX.tsv"))[1])),
+                yes = lapply(list(c(# Sys.glob(paste0("../work/[[:alnum:]][[:alnum:]]/*/ready_for_regression_", sample, "_chr1.tsv"))[1],
+                                    # Sys.glob(paste0("../work/[[:alnum:]][[:alnum:]]/*/ready_for_regression_", sample, "_chr2.tsv"))[1],
+                                    # Sys.glob(paste0("../work/[[:alnum:]][[:alnum:]]/*/ready_for_regression_", sample, "_chr3.tsv"))[1],
+                                    # Sys.glob(paste0("../work/[[:alnum:]][[:alnum:]]/*/ready_for_regression_", sample, "_chr4.tsv"))[1],
+                                    # Sys.glob(paste0("../work/[[:alnum:]][[:alnum:]]/*/ready_for_regression_", sample, "_chr5.tsv"))[1],
+                                    # Sys.glob(paste0("../work/[[:alnum:]][[:alnum:]]/*/ready_for_regression_", sample, "_chr6.tsv"))[1],
+                                    # Sys.glob(paste0("../work/[[:alnum:]][[:alnum:]]/*/ready_for_regression_", sample, "_chr7.tsv"))[1],
+                                    # Sys.glob(paste0("../work/[[:alnum:]][[:alnum:]]/*/ready_for_regression_", sample, "_chr8.tsv"))[1],
+                                    # Sys.glob(paste0("../work/[[:alnum:]][[:alnum:]]/*/ready_for_regression_", sample, "_chr9.tsv"))[1],
+                                    # Sys.glob(paste0("../work/[[:alnum:]][[:alnum:]]/*/ready_for_regression_", sample, "_chr10.tsv"))[1],
+                                    # Sys.glob(paste0("../work/[[:alnum:]][[:alnum:]]/*/ready_for_regression_", sample, "_chr11.tsv"))[1],
+                                    # Sys.glob(paste0("../work/[[:alnum:]][[:alnum:]]/*/ready_for_regression_", sample, "_chr12.tsv"))[1],
+                                    # Sys.glob(paste0("../work/[[:alnum:]][[:alnum:]]/*/ready_for_regression_", sample, "_chr13.tsv"))[1],
+                                    # Sys.glob(paste0("../work/[[:alnum:]][[:alnum:]]/*/ready_for_regression_", sample, "_chr14.tsv"))[1],
+                                    # Sys.glob(paste0("../work/[[:alnum:]][[:alnum:]]/*/ready_for_regression_", sample, "_chr15.tsv"))[1],
+                                    # Sys.glob(paste0("../work/[[:alnum:]][[:alnum:]]/*/ready_for_regression_", sample, "_chr16.tsv"))[1],
+                                    # Sys.glob(paste0("../work/[[:alnum:]][[:alnum:]]/*/ready_for_regression_", sample, "_chr17.tsv"))[1],
+                                    # Sys.glob(paste0("../work/[[:alnum:]][[:alnum:]]/*/ready_for_regression_", sample, "_chr18.tsv"))[1],
+                                    # Sys.glob(paste0("../work/[[:alnum:]][[:alnum:]]/*/ready_for_regression_", sample, "_chr19.tsv"))[1],
+                                    # Sys.glob(paste0("../work/[[:alnum:]][[:alnum:]]/*/ready_for_regression_", sample, "_chr20.tsv"))[1],
+                                    Sys.glob(paste0("ready_for_regression_", sample, "_chr21.tsv"))[1] #,
+                                    # Sys.glob(paste0("../work/[[:alnum:]][[:alnum:]]/*/ready_for_regression_", sample, "_chr22.tsv"))[1],
+                                    # Sys.glob(paste0("../work/[[:alnum:]][[:alnum:]]/*/ready_for_regression_", sample, "_chrX.tsv"))[1]
+                                    )),
                              read_tsv),
                 no = lapply(list(all_chr_sample_of_interest), read_tsv)) %>%
   Reduce(function(x, y) bind_rows(x, y), .)
@@ -111,16 +112,15 @@ reg_table = select(merged, -c(sample_id, mut_id, `.overlap`)) %>%
   mutate(log_freq_trinuc32 = log(freq_trinuc32 + 1)) %>% 
   select(-c(trinuc32, freq_trinuc32)) %>% 
   relocate(mutcount) %>%
-  relocate(mb_domain, .before = "tri") %>%
-  # mb_domain and tri as ordered and unordered factors, respectively
-  mutate(mb_domain = factor(mb_domain, ordered = T),
-         tri = factor(tri, ordered = F, levels = trinuc_96)) %>% 
-  arrange(tri, mb_domain) %>% 
+  # tri as ordered factor
+  mutate(tri = factor(tri, ordered = F, levels = trinuc_96)) %>% 
+  arrange(tri) %>% 
   as_tibble
 
+reg_variables = case_when(length(chromatin_features$name) == 1 ~ paste0(paste(dnarep_marks$name, collapse = " + "), " + mb_domain + "),
+                          length(chromatin_features$name) == 0 ~ paste0(paste(dnarep_marks$name, collapse = " + "), " + "))
 formula = paste0("mutcount ~ ",
-                 paste(dnarep_marks$name, collapse = " + "), " + ",
-                 "mb_domain + ",
+                 reg_variables,
                  "tri + ",
                  "offset(log_freq_trinuc32)")
 
@@ -150,8 +150,8 @@ if(sum(reg_table$mutcount) >= 1){ # only do regression if there are not only 0 m
                 #       |  \  <-- A3A not expressed in tumor
                 #       |___\_____ 
                 #        bg  TpCpH_hairpins
-              }else{
-                factor(., ordered = F, levels = c('low', 'high'))}) # x-axis:
+              }else if("low" %in% unique(.)  &  "high" %in% unique(.)){
+                factor(., ordered = F, levels = c('low', 'high')) # x-axis:
                 # #SNVs |
                 #       | ------ <-- BERdef tumor (maybe not flat, but with less negative coeff.)
                 #       | \
@@ -159,9 +159,12 @@ if(sum(reg_table$mutcount) >= 1){ # only do regression if there are not only 0 m
                 #       |___\_____ 
                 #        low  high
                 #        OGG1 OGG1
+              }else{ ## in case levels are not "low" and "high", just let them be as they are, probably alphanumerically
+                factor(., ordered = F) # x-axis:
+              })
   
   # generalized linear model for the negative binomial family
-  cat(sprintf('Running regression in trinucl. mode: "%s"...\n', trinuc_mode))
+  cat(sprintf('Running regression...\n'))
   y = suppressWarnings(glm.nb(formula = formula, 
                               data = reg_table))
   

@@ -43,7 +43,7 @@ chromatin_features = ifelse(interactive(),
 
 ## load map_features (SINGLE chromosome) from 2nd process
 dfleft = ifelse(interactive(),
-                yes = Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/map_features_chr1.tsv")[1],
+                yes = Sys.glob("map_features_chr21.tsv")[1],
                 no = args[5]) %>% 
   fread %>% as_tibble %>% 
   rename("chrom" = "seqnames")
@@ -64,17 +64,11 @@ good_mappability_regions = ifelse(interactive(),
 
 # load collected median_scores from 1st process
 median_scores = ifelse(interactive(),
-                       yes = lapply(list(c(Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/median_score_OGG1_GOx30_chipseq.tsv")[1],
-                                           Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/median_score_OGG1_GOx60_chipseq.tsv")[1],
-                                           Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/median_score_UV_XRseq_NHF1_PP64_1h_Rep1.tsv")[1],
-                                           Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/median_score_UV_XRseq_NHF1_CPD_1h.tsv")[1],
-                                           Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/median_score_XRCC4.tsv")[1],
-                                           Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/median_score_SETD2_control.tsv")[1],
-                                           Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/median_score_MSH6_control.tsv")[1],
-                                           Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/median_score_TP53_dauno_MOLM13.tsv")[1],
-                                           Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/median_score_TP53_dauno_K562.tsv")[1],
-                                           Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/median_score_CTCF_cohesin.tsv")[1],
-                                           Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/median_score_A3A_TpCpH_hairpins.tsv")[1])), 
+                       yes = lapply(list(c(Sys.glob("median_score_DHS.tsv")[1],
+                                           Sys.glob("median_score_exons.tsv")[1],
+                                           Sys.glob("median_score_H3K36me3.tsv")[1],
+                                           Sys.glob("median_score_RepliSeq.tsv")[1],
+                                           Sys.glob("median_score_RnaSeq.tsv")[1])), 
                                     read_tsv),
                        no = lapply(list(args[-(1:6)]), read_tsv)) %>%
   Reduce(function(x, y) bind_rows(x, y), .)
@@ -115,8 +109,8 @@ merged = dfright %>%
   select(-c(contains("chrom"), contains("start_"), contains("end_"), contains("width_"), contains("strand_"))) %>%
   # remove the "dleft" and "dright" parts of the column names
   rename_all(~str_replace_all(., "_dfleft|_dfright", "")) %>%
-  # combine chromatin features (although there should typically be only RepliSeq)
-  unite("mb_domain", contains(chromatin_features$name), sep = "_") %>% 
+  # combine chromatin features, if there is any (although there should typically be only RepliSeq)
+  {if (length(chromatin_features$name)>0) unite("mb_domain", contains(chromatin_features$name), sep = "_") else .} %>%
   # binarize weighted average DNA repair value by being lower or larger than the across-genome median
   rowwise %>% 
   mutate_at(vars(contains(match = dnarep_marks$name)),
@@ -129,7 +123,6 @@ merged = dfright %>%
                    # it's factor, leave as is
                    no = x)}) %>% 
   mutate(sample_id = sample)
-
 gc()
 
 if(nrow(merged) == 0){

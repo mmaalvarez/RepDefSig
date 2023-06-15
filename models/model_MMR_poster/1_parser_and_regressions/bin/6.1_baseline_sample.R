@@ -56,17 +56,19 @@ chromatin_features = ifelse(interactive(),
 
 # load offset from 4th process
 offset = ifelse(interactive(),
-                yes = Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/offset.tsv")[1],
+                yes = Sys.glob("offset.tsv")[1],
                 no = args[5]) %>% 
   read_tsv
-# rename the chromatin environment column (typically 'RepliSeq') to match the "mb_domain" name given to the general mutation table
-colnames(offset)[1] = "mb_domain"
-offset = offset %>% 
-  mutate(mb_domain = factor(mb_domain))
+# rename the chromatin environment column (if there is any, typically 'RepliSeq') to match the "mb_domain" name given to the general mutation table
+if(length(chromatin_features) == 1){
+  colnames(offset)[1] = "mb_domain"
+  offset = offset %>% 
+    mutate(mb_domain = factor(mb_domain))
+}
 
 ## load map_features (SINGLE chromosome) from 2nd process
 dfleft = ifelse(interactive(),
-                yes = Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/map_features_chr1.tsv"),
+                yes = Sys.glob("map_features_chr21.tsv"),
                 no = args[6]) %>% 
   fread %>% as_tibble %>% 
   rename("chrom" = "seqnames")
@@ -93,22 +95,16 @@ mutfoldinc = ifelse(interactive(),
 
 # which dna repair mark has muts increased in this iteration
 dnarep_mark_simulate = ifelse(interactive(),
-                               yes = "OGG1_GOx30_chipseq",
+                               yes = "RepliSeq",
                                no = args[9])
 
 ## load collected median_scores from 1st process
 median_scores = ifelse(interactive(),
-                       yes = lapply(list(c(Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/median_score_OGG1_GOx30_chipseq.tsv")[1],
-                                           Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/median_score_OGG1_GOx60_chipseq.tsv")[1],
-                                           Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/median_score_UV_XRseq_NHF1_PP64_1h_Rep1.tsv")[1],
-                                           Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/median_score_UV_XRseq_NHF1_CPD_1h.tsv")[1],
-                                           Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/median_score_XRCC4.tsv")[1],
-                                           Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/median_score_SETD2_control.tsv")[1],
-                                           Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/median_score_MSH6_control.tsv")[1],
-                                           Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/median_score_TP53_dauno_K562.tsv")[1],
-                                           Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/median_score_TP53_dauno_MOLM13.tsv")[1],
-                                           Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/median_score_CTCF_cohesin.tsv")[1],
-                                           Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/median_score_A3A_TpCpH_hairpins.tsv")[1])), 
+                       yes = lapply(list(c(Sys.glob("median_score_DHS.tsv")[1],
+                                           Sys.glob("median_score_exons.tsv")[1],
+                                           Sys.glob("median_score_H3K36me3.tsv")[1],
+                                           Sys.glob("median_score_RepliSeq.tsv")[1],
+                                           Sys.glob("median_score_RnaSeq.tsv")[1])), 
                                     read_tsv),
                        no = lapply(list(args[-(1:9)]), read_tsv)) %>%
   Reduce(function(x, y) bind_rows(x, y), .)
@@ -154,7 +150,7 @@ for(control_sample in control_samples){
       # remove the "dleft" and "dright" parts of the column names
       rename_all(~str_replace_all(., "_dfleft|_dfright", "")) %>%
       # combine chromatin features (although there should typically be only RepliSeq)
-      unite("mb_domain", contains(chromatin_features$name), sep = "_") %>% 
+      {if (length(chromatin_features$name)>0) unite("mb_domain", contains(chromatin_features$name), sep = "_") else .} %>%
       # binarize weighted average DNA repair value by being lower or larger than the across-genome median
       rowwise %>% 
       mutate_at(vars(contains(match = dnarep_marks$name)),

@@ -1,0 +1,85 @@
+POSTER ISMB/ECCB: MMRdef detection
+	
+
+	WGS data
+		
+		Marcel K562: 24 MMR-/- pairs
+
+			ORIGINAL: /g/strcombio/fsupek_data/MMR_BER_Project/Processed_data/Calling/Strelka2/VCFs_SUPEK_24_28/Discrete_variants/*_REP1.vcf
+			PARSED: /g/strcombio/fsupek_cancer3/malvarez/WGS_tumors/somatic_variation/cell_lines/marcel_K562/parse_vcfs/res/muts_pass_*_REP1.csv
+
+			I include all, even though they vary in their MMRdef, ranging between strong/mid/weak/none (see metadata)
+
+
+		Zou iPSC MMR-/-
+
+			/g/strcombio/fsupek_cancer3/malvarez/WGS_tumors/somatic_variation/cell_lines/zou_2021/processed/data/
+
+			Kept only: Zou_iPSC_MMRko.tsv:
+					MSK0.3_s4	MSH6
+					MSK0.3_s5	MSH6
+					MSK0.3_s6	MSH6
+					MSK0.3_s8	MSH6
+					MSK0.4_s2	MSH6
+					MSK0.4_s3	MSH6
+					MSK0.4_s4	MSH6
+					MSK0.4_s7	MSH6
+					MSK0.120_s1	MSH2
+					MSK0.120_s2	MSH2
+					MSK0.120_s3	MSH2
+					MSK0.172_s1	MLH1
+					MSK0.172_s2	MLH1
+					MSK0.173_s1	MLH1
+					MSK0.173_s2	MLH1
+					MSK0.123_s2	PMS1
+					MSK0.130_s1	PMS1
+					MSK0.130_s2	PMS1
+					MSK0.170_s1	PMS2
+					MSK0.170_s2	PMS2
+					MSK0.171_s1	PMS2
+					MSK0.171_s2	PMS2
+
+			 NOTE: 'MSK0.123_s1	PMS1' excluded since it's not in "list_treated_samples_mutburden_above_mean_of_controls.tsv", i.e. too low mut burden, maybe not effectively KO
+
+
+		MMRdef tumors
+
+			/g/strcombio/fsupek_cancer3/malvarez/WGS_tumors/somatic_variation/TCGA_PCAWG_Hartwig_CPTAC_POG_MMRFCOMMPASS/data/
+			
+			Kept only: tumors_MMRdef.tsv
+
+				MSI_status %in% c("HYPER", "MSI")
+
+
+
+	Features (trinuc-matched beforehand, symlinks in /g/strcombio/fsupek_data/users/malvarez/git/trinucleotide_matching_tracks/matched_beds_symlinks/)
+
+		group1: mutrates differences between bins (reg coeff) known to change between MMRwt and MMRdef samples
+			
+			RepliSeq	ORIG: /g/strcombio/fsupek_cancer3/malvarez/chromatin_info/replication_time/fran_pooled_bins_replication_time/fran_legacy_parsed/RepliSeq_pooled8_merged_2bins.bed
+				NOTE: usually RepliSeq goes as "chromatin_feature" with 6 levels, but here it's in dnarep_marks with 2 levels (<6of6 vs. 6of6)
+
+			H3K36me3	ORIG: /g/strcombio/fsupek_cancer3/malvarez/chromatin_info/histone_methylation_and_DHS/roadmap/fran_legacy_parsed/inputBeds_pooled8_merged_2bins/H3K36me3_pooled8_merged_2bins.bed
+				NOTE: 0of3+1of3 vs. 2of3+3of3
+
+		group2: ...known to not change...
+		
+			RnaSeq		ORIG: /g/strcombio/fsupek_cancer3/malvarez/chromatin_info/rna_seq/bins_histone_marks_rnaseq_pooled_fran/fran_legacy_parsed/RnaSeq-txnStrandCorrected_pooled8_merged_2bins.bed
+				NOTE: 0of3 vs. 1of3+2of3+3of3
+
+			DHS			ORIG: /g/strcombio/fsupek_cancer3/malvarez/chromatin_info/histone_methylation_and_DHS/roadmap/fran_legacy_parsed/inputBeds_pooled8_merged_2bins/DNase_pooled8_merged_2bins.bed
+				NOTE: 0of3+1of3 vs. 2of3+3of3
+
+		group3: ...unknown whether they could change...
+
+			SETD2		ORIG: /g/strcombio/fsupek_cancer3/malvarez/chromatin_info/DNA_repair__protein_binding/DNA_repair/MMR/MSH6_SETD2_H3K36me3_guominli/2_fold_enrichment_vs_input/bedgraphs_fold_enrich/SRR13314134_sorted_FE_3ntMatched.bed.gz	# SETD2_control chip-seqGraph
+			
+			MSH6		ORIG: /g/strcombio/fsupek_cancer3/malvarez/chromatin_info/DNA_repair__protein_binding/DNA_repair/MMR/MSH6_SETD2_H3K36me3_guominli/2_fold_enrichment_vs_input/bedgraphs_fold_enrich/SRR13314132_sorted_FE_3ntMatched.bed.gz	# MSH6_control chip-seqGraph
+			
+			exons		ORIG: /g/strcombio/fsupek_cancer3/malvarez/chromatin_info/exon_positions/get_exons/lifted_hg19_chr_exons_vs_bgGenome.bed.gz
+				NOTE: - exons include only exons from genes that are not CEG, TSG, or OG 
+					  - bgGenome includes exons from CEG, TSG, and OG, besides all the remaining genome
+			
+			H3K36me2	ORIG: /g/strcombio/fsupek_cancer3/malvarez/chromatin_info/histone_methylation_and_DHS/H3K36me2/pooled_samples/H3K36me2_pooled4.bed.gz
+				NOTE: pooled 4 samples (see sample_paths.tsv in that folder)
+				

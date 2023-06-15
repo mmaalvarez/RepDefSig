@@ -28,60 +28,66 @@ dnarep_marks = ifelse(interactive(),
                       no = args[1]) %>%
   read_csv(comment = "#")
 
+chromatin_features = ifelse(interactive(),
+                            yes = "../input_lists/chromatin_features.csv",
+                            no = args[2]) %>%
+  read_csv(comment = "#")
 
 dnarep_mark_simulate = ifelse(interactive(),
-                yes = "OGG1_GOx30_chipseq",
-                no = args[2])
-
-altered_level = ifelse(dnarep_mark_simulate %in% c("CTCF_cohesin","A3A_TpCpH_hairpins"),
-                       yes = "targets",
-                       no = "high_activity")
+                yes = "RepliSeq",
+                no = args[3])
 
 mutfoldinc = ifelse(interactive(),
-                yes = "0.01",
-                no = args[3]) %>% as.numeric
+                    yes = "0.01",
+                    no = args[4]) %>% 
+  as.numeric
 
 # load offset from 3rd process
 offset = ifelse(interactive(),
-                yes = Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/offset.tsv")[1],
-                no = args[4]) %>% 
+                yes = Sys.glob("offset.tsv")[1],
+                no = args[5]) %>% 
   read_tsv
-# rename the chromatin environment column (typically 'RepliSeq') to match the "mb_domain" name given to the general mutation table
-colnames(offset)[1] = "mb_domain"
-offset = offset %>% 
-  mutate(mb_domain = factor(mb_domain))
 
-## type of trinuc modification, if any
-trinuc_mode = ifelse(interactive(),
-                     yes = "adjustment",
-                     no = args[5])
+altered_level = ifelse(dnarep_mark_simulate %in% c("CTCF_cohesin","A3A_TpCpH_hairpins"),
+                       yes = "targets",
+                       no = ifelse("high_activity" %in% unique(offset[[dnarep_mark_simulate]]),
+                                   yes = "high_activity",
+                                   # in case levels are not low vs. high activity, the altered level is the 2nd level
+                                   no = unique(offset[[dnarep_mark_simulate]])[2]))
 
+# rename the chromatin environment column (if there is any, typically 'RepliSeq') to match the "mb_domain" name given to the general mutation table
+if(length(chromatin_features) == 1){
+  colnames(offset)[1] = "mb_domain"
+  offset = offset %>% 
+    mutate(mb_domain = factor(mb_domain, ordered = T))
+}
 
 ## load ready_for_regression (ALL sep chromosomes) (ACTUALLY BASELINE SAMPLE) from previous process, and bind them
 baseline_sample = ifelse(interactive(),
-                yes = lapply(list(c(Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/baseline_sample_chr1_mutfoldinc0.01_OGG1_GOx30_chipseq.tsv")[1],
-                                    Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/baseline_sample_chr2_mutfoldinc0.01_OGG1_GOx30_chipseq.tsv")[1],
-                                    Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/baseline_sample_chr3_mutfoldinc0.01_OGG1_GOx30_chipseq.tsv")[1],
-                                    Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/baseline_sample_chr4_mutfoldinc0.01_OGG1_GOx30_chipseq.tsv")[1],
-                                    Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/baseline_sample_chr5_mutfoldinc0.01_OGG1_GOx30_chipseq.tsv")[1],
-                                    Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/baseline_sample_chr6_mutfoldinc0.01_OGG1_GOx30_chipseq.tsv")[1],
-                                    Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/baseline_sample_chr7_mutfoldinc0.01_OGG1_GOx30_chipseq.tsv")[1],
-                                    Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/baseline_sample_chr8_mutfoldinc0.01_OGG1_GOx30_chipseq.tsv")[1],
-                                    Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/baseline_sample_chr9_mutfoldinc0.01_OGG1_GOx30_chipseq.tsv")[1],
-                                    Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/baseline_sample_chr10_mutfoldinc0.01_OGG1_GOx30_chipseq.tsv")[1],
-                                    Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/baseline_sample_chr11_mutfoldinc0.01_OGG1_GOx30_chipseq.tsv")[1],
-                                    Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/baseline_sample_chr12_mutfoldinc0.01_OGG1_GOx30_chipseq.tsv")[1],
-                                    Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/baseline_sample_chr13_mutfoldinc0.01_OGG1_GOx30_chipseq.tsv")[1],
-                                    Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/baseline_sample_chr14_mutfoldinc0.01_OGG1_GOx30_chipseq.tsv")[1],
-                                    Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/baseline_sample_chr15_mutfoldinc0.01_OGG1_GOx30_chipseq.tsv")[1],
-                                    Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/baseline_sample_chr16_mutfoldinc0.01_OGG1_GOx30_chipseq.tsv")[1],
-                                    Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/baseline_sample_chr17_mutfoldinc0.01_OGG1_GOx30_chipseq.tsv")[1],
-                                    Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/baseline_sample_chr18_mutfoldinc0.01_OGG1_GOx30_chipseq.tsv")[1],
-                                    Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/baseline_sample_chr19_mutfoldinc0.01_OGG1_GOx30_chipseq.tsv")[1],
-                                    Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/baseline_sample_chr20_mutfoldinc0.01_OGG1_GOx30_chipseq.tsv")[1],
-                                    Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/baseline_sample_chr21_mutfoldinc0.01_OGG1_GOx30_chipseq.tsv")[1],
-                                    Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/baseline_sample_chr22_mutfoldinc0.01_OGG1_GOx30_chipseq.tsv")[1],
-                                    Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/baseline_sample_chrX_mutfoldinc0.01_OGG1_GOx30_chipseq.tsv")[1])),
+                yes = lapply(list(c(# Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/baseline_sample_chr1_mutfoldinc0.01_OGG1_GOx30_chipseq.tsv")[1],
+                                    # Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/baseline_sample_chr2_mutfoldinc0.01_OGG1_GOx30_chipseq.tsv")[1],
+                                    # Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/baseline_sample_chr3_mutfoldinc0.01_OGG1_GOx30_chipseq.tsv")[1],
+                                    # Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/baseline_sample_chr4_mutfoldinc0.01_OGG1_GOx30_chipseq.tsv")[1],
+                                    # Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/baseline_sample_chr5_mutfoldinc0.01_OGG1_GOx30_chipseq.tsv")[1],
+                                    # Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/baseline_sample_chr6_mutfoldinc0.01_OGG1_GOx30_chipseq.tsv")[1],
+                                    # Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/baseline_sample_chr7_mutfoldinc0.01_OGG1_GOx30_chipseq.tsv")[1],
+                                    # Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/baseline_sample_chr8_mutfoldinc0.01_OGG1_GOx30_chipseq.tsv")[1],
+                                    # Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/baseline_sample_chr9_mutfoldinc0.01_OGG1_GOx30_chipseq.tsv")[1],
+                                    # Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/baseline_sample_chr10_mutfoldinc0.01_OGG1_GOx30_chipseq.tsv")[1],
+                                    # Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/baseline_sample_chr11_mutfoldinc0.01_OGG1_GOx30_chipseq.tsv")[1],
+                                    # Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/baseline_sample_chr12_mutfoldinc0.01_OGG1_GOx30_chipseq.tsv")[1],
+                                    # Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/baseline_sample_chr13_mutfoldinc0.01_OGG1_GOx30_chipseq.tsv")[1],
+                                    # Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/baseline_sample_chr14_mutfoldinc0.01_OGG1_GOx30_chipseq.tsv")[1],
+                                    # Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/baseline_sample_chr15_mutfoldinc0.01_OGG1_GOx30_chipseq.tsv")[1],
+                                    # Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/baseline_sample_chr16_mutfoldinc0.01_OGG1_GOx30_chipseq.tsv")[1],
+                                    # Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/baseline_sample_chr17_mutfoldinc0.01_OGG1_GOx30_chipseq.tsv")[1],
+                                    # Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/baseline_sample_chr18_mutfoldinc0.01_OGG1_GOx30_chipseq.tsv")[1],
+                                    # Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/baseline_sample_chr19_mutfoldinc0.01_OGG1_GOx30_chipseq.tsv")[1],
+                                    # Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/baseline_sample_chr20_mutfoldinc0.01_OGG1_GOx30_chipseq.tsv")[1],
+                                    Sys.glob("baseline_sample_chr21_mutfoldinc0.01_RepliSeq.tsv")[1] #,
+                                    # Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/baseline_sample_chr22_mutfoldinc0.01_OGG1_GOx30_chipseq.tsv")[1],
+                                    # Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/baseline_sample_chrX_mutfoldinc0.01_OGG1_GOx30_chipseq.tsv")[1]
+                                    )),
                 read_tsv),
                 no = lapply(list(args[-(1:5)][str_detect(args[-(1:5)], 
                                                          paste0("_mutfoldinc", mutfoldinc, "_", dnarep_mark_simulate, ".tsv"))]), 
@@ -106,8 +112,8 @@ gc()
 ## get total mut burden at background bin in baseline sample KEEP TRINUC SEP
 bg_mut_burden = baseline_sample %>% 
   # get only mut counts in bg bin ("low" or "bgGenome")
-  filter(get(dnarep_mark_simulate) %in% c("low", "bgGenome")) %>% 
-  group_by(tri, mb_domain) %>% 
+  filter(! get(dnarep_mark_simulate) %in% altered_level) %>% 
+  group_by(tri, {if("mb_domain" %in% names(.)) mb_domain else NULL}) %>% 
   # collapse bins
   summarise(mutfoldinc_mutcount = ceiling(sum(mean_mutcount) * mutfoldinc)) %>% 
   ungroup
@@ -117,7 +123,7 @@ bg_mut_burden = baseline_sample %>%
 
 # store for later adding back
 baseline_sample_low_bins = baseline_sample %>%
-  filter(get(dnarep_mark_simulate) %in% c("low", "bgGenome")) %>% 
+  filter(! get(dnarep_mark_simulate) %in% altered_level) %>% 
   rename("simulated_mutcount_x-fold" = mean_mutcount)
 
 
@@ -127,7 +133,7 @@ trinuc_96 = c("A(C>A)A", "A(C>A)C", "A(C>A)G", "A(C>A)T", "A(C>G)A", "A(C>G)C", 
 reg_table_sim_pos_con = baseline_sample %>%
   ## create sim_pos_con
   # keep only high bins to speed up, then the unaltered low bins are re-added
-  filter(get(dnarep_mark_simulate) %in% c("high", "CTCF_cohesin_peak", "hairpin_TpCpH")) %>% 
+  filter(get(dnarep_mark_simulate) %in% altered_level) %>% 
   #### increase mutations in bins that are i) "high" repair mark abundance -to approach the baseline-, or ii) "CTCF_cohesin_peak"|"hairpin_TpCpH" -to simulate an CTCF_cohesin_peak|A3A-SHM sample-
   ## mutfoldinc is multiplied to the baseline sample's genome-wide mutation burden per trinuc (e.g. if baseline sample's total # mutations at ATA in target bin (e.g. CTCF_cohesin_peak-targets) is just 2, and in bg bin (bgGenome) is 250, then multiply to the target bin a FRACTION of the total # ATA muts of the bg bin: e.g. a 0.01 --> 2 * 0.01 * 250
   # ceiling the mutfoldinc*mutburden ensures that it's not <1 in case mutburden was too low
@@ -140,7 +146,7 @@ reg_table_sim_pos_con = baseline_sample %>%
   merge(offset, all = T) %>%
   select(`simulated_mutcount_x-fold`,
          all_of(dnarep_marks$name),
-         mb_domain,
+         contains("mb_domain"),
          tri,
          trinuc32,
          freq_trinuc32) %>%
@@ -154,16 +160,15 @@ reg_table_sim_pos_con = baseline_sample %>%
   mutate(log_freq_trinuc32 = log(freq_trinuc32 + 1)) %>% 
   select(-c(trinuc32, freq_trinuc32)) %>% 
   relocate(mutcount) %>%
-  relocate(mb_domain, .before = "tri") %>%
-  # mb_domain and tri as ordered and unordered factors, respectively
-  mutate(mb_domain = factor(mb_domain, ordered = T),
-         tri = factor(tri, ordered = F, levels = trinuc_96)) %>% 
-  arrange(tri, mb_domain) %>% 
+  # tri as ordered factor
+  mutate(tri = factor(tri, ordered = F, levels = trinuc_96)) %>% 
+  arrange(tri) %>% 
   as_tibble
 
+reg_variables = case_when(length(chromatin_features$name) == 1 ~ paste0(paste(dnarep_marks$name, collapse = " + "), " + mb_domain + "),
+                          length(chromatin_features$name) == 0 ~ paste0(paste(dnarep_marks$name, collapse = " + "), " + "))
 formula = paste0("mutcount ~ ",
-                 paste(dnarep_marks$name, collapse = " + "), " + ",
-                 "mb_domain + ",
+                 reg_variables,
                  "tri + ",
                  "offset(log_freq_trinuc32)")
 gc()
@@ -192,8 +197,8 @@ if(sum(reg_table_sim_pos_con$mutcount) >= 1){ # only do regression if there are 
                 #       |  \  <-- A3A not expressed in tumor
                 #       |___\_____ 
                 #        bg  TpCpH_hairpins
-              }else{
-                factor(., ordered = F, levels = c('low', 'high'))}) # x-axis:
+              }else if("low" %in% unique(.)  &  "high" %in% unique(.)){
+                factor(., ordered = F, levels = c('low', 'high')) # x-axis:
                 # #SNVs |
                 #       | ------ <-- BERdef tumor (maybe not flat, but with less negative coeff.)
                 #       | \
@@ -201,9 +206,12 @@ if(sum(reg_table_sim_pos_con$mutcount) >= 1){ # only do regression if there are 
                 #       |___\_____ 
                 #        low  high
                 #        OGG1 OGG1
-
+              }else{ ## in case levels are not "low" and "high", just let them be as they are, probably alphanumerically
+                factor(., ordered = F) # x-axis:
+              })
+  
   # stick to a generalized linear model for the negative binomial family
-  cat(sprintf('Running regression in trinucl. mode: "%s"...\n', trinuc_mode))
+  cat(sprintf('Running regression...\n'))
   y = suppressWarnings(glm.nb(formula = formula, 
                               data = reg_table_sim_pos_con))
   

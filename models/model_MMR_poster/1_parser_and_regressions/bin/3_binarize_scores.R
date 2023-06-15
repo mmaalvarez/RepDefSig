@@ -26,7 +26,7 @@ chromatin_features = ifelse(interactive(),
 
 ## load raw-score feature map from previous process
 map_features = ifelse(interactive(),
-                      yes = Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/map_features_chr21.tsv"),
+                      yes = Sys.glob("map_features_chr21.tsv"),
                       no = args[2]) %>% 
   read_tsv()
 
@@ -35,17 +35,11 @@ chromosome = unique(map_features$seqnames)
 
 # load collected median_scores from 1st process
 median_scores = ifelse(interactive(),
-                       yes = lapply(list(c(Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/median_score_OGG1_GOx30_chipseq.tsv")[1],
-                                           Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/median_score_OGG1_GOx60_chipseq.tsv")[1],
-                                           Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/median_score_UV_XRseq_NHF1_PP64_1h_Rep1.tsv")[1],
-                                           Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/median_score_UV_XRseq_NHF1_CPD_1h.tsv")[1],
-                                           Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/median_score_XRCC4.tsv")[1],
-                                           Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/median_score_SETD2_control.tsv")[1],
-                                           Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/median_score_MSH6_control.tsv")[1],
-                                           Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/median_score_TP53_dauno_K562.tsv")[1],
-                                           Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/median_score_TP53_dauno_MOLM13.tsv")[1],
-                                           Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/median_score_CTCF_cohesin.tsv")[1], 
-                                           Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/median_score_A3A_TpCpH_hairpins.tsv")[1])), 
+                       yes = lapply(list(c(Sys.glob("median_score_DHS.tsv")[1],
+                                           Sys.glob("median_score_exons.tsv")[1],
+                                           Sys.glob("median_score_H3K36me3.tsv")[1],
+                                           Sys.glob("median_score_RepliSeq.tsv")[1],
+                                           Sys.glob("median_score_RnaSeq.tsv")[1])), 
                                     read_tsv),
                        no = lapply(list(args[-(1:2)]), read_tsv)) %>%
   Reduce(function(x, y) bind_rows(x, y), .)
@@ -70,7 +64,7 @@ features_with_character_levels = map_features %>%
 map_features_binarized_temp = map_features %>%
   lazy_dt %>% 
   #### WARNING first do the average score at duplicated (start end) ranges, this is due to the (in some features) hg38-->hg19 lift dividing some ranges into 2 alternative ranges with the same score
-  group_by_at(vars('seqnames', 'start', 'end', features_with_character_levels)) %>% 
+  group_by_at(vars('seqnames', 'start', 'end', all_of(features_with_character_levels))) %>% 
   summarise_at(features_with_numeric_score,
                ~mean(.)) %>% 
   ungroup %>% 
@@ -83,7 +77,7 @@ map_features_binarized_temp = map_features %>%
                    "low",
                    "high")}) %>% 
   as_tibble %>% 
-  relocate(features_with_character_levels, .after = last_col()) %>% 
+  relocate(all_of(features_with_character_levels), .after = last_col()) %>% 
   unite("metadata", !matches("seqnames|start|end|width|strand")) %>% 
   makeGRangesFromDataFrame(keep.extra.columns = T)
 rm(map_features) ; gc()
@@ -94,11 +88,13 @@ mcols(map_features_binarized_temp) = names(map_features_binarized_temp)
 map_features_binarized = map_features_binarized_temp %>% 
   as_tibble %>% 
   arrange(start) %>% 
-  mutate(X = gsub("CTCF_cohesin_peak", "CTCFcohesinpeak ", X),
-         X = gsub("hairpin_TpCpH", "hairpinTpCpH ", X)) %>% 
+  mutate(#X = gsub("CTCF_cohesin_peak", "CTCFcohesinpeak ", X),
+         #X = gsub("hairpin_TpCpH", "hairpinTpCpH ", X),
+         X = gsub("exon__non_CEG_TSG_OG", "exon", X)) %>%
   separate(X, into = feature_names, sep = "_") %>% 
-  mutate(CTCF_cohesin = gsub("CTCFcohesinpeak ", "CTCF_cohesin_peak", CTCF_cohesin),
-         A3A_TpCpH_hairpins = gsub("hairpinTpCpH ", "hairpin_TpCpH", A3A_TpCpH_hairpins)) %>% 
+  mutate(#CTCF_cohesin = gsub("CTCFcohesinpeak ", "CTCF_cohesin_peak", CTCF_cohesin),
+         #A3A_TpCpH_hairpins = gsub("hairpinTpCpH ", "hairpin_TpCpH", A3A_TpCpH_hairpins),
+         exons = gsub("exon", "exon__non_CEG_TSG_OG", exons)) %>% 
   # add 1 bp downstream and upstream regions of width 1 or 2, so trinucs can be fetched
   mutate(start = ifelse(width <= 2,
                         start-1,
@@ -144,7 +140,7 @@ rm(sequences) ; gc()
 # bind trinuc32 freqs to map_features_binarized
 map_features_binarized_trinuc32_freq = map_features_binarized %>% 
   bind_cols(trinuc32_freq) %>% 
-  group_by_at(vars(feature_names)) %>% 
+  group_by_at(vars(all_of(feature_names))) %>% 
   summarise_at(vars(matches("^[A,C,T,G][C,T][A,C,T,G]$")),
                ~sum(.)) %>% 
   mutate(chrom = chromosome) %>% 

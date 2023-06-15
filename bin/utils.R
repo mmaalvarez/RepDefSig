@@ -1,23 +1,26 @@
 library(tidyverse)
+library(data.table)
+library(dtplyr)
 library(GenomicRanges)
 library(rtracklayer)
 library(valr) # for granges merging (bed_intersect)
 library(conflicted)
 conflict_prefer("filter", "dplyr")
 conflict_prefer("rename", "dplyr")
+conflict_prefer("lag", "dplyr")
+conflict_prefer("between", "dplyr")
 conflict_prefer("select", "dplyr")
 conflict_prefer("slice", "dplyr")
 conflict_prefer("map", "purrr")
 conflict_prefer("extract", "magrittr")
 conflict_prefer("reduce", "IRanges")
 conflict_prefer("desc", "dplyr")
-
+conflict_prefer("reverseComplement", "spgs")
 
 #setwd("/g/strcombio/fsupek_data/users/malvarez/projects/RepDefSig/bin")
 
 
 ##########################################################################################################################
-
 ## function for parsing all track files: load, rename chromosomes, extract iteration's chromosome, and POSSIBLY add +- 'nt_extend' bp to ranges if there are gaps
 # imported by 2_load_feature_maps.R
 
@@ -34,7 +37,7 @@ parse_feature_files = function(features_table,
       pull(width)}
 
   if(nt_extend >= 1){
-    cat(sprintf("MODE: Removing %ibp from both sides of range gaps\n", nt_extend))
+    cat(sprintf("MODE: Removing %fbp from both sides of range gaps\n", nt_extend))
   } else {
     cat(sprintf("MODE: NOT removing bp from both sides of range gaps\n"))
   }
@@ -48,8 +51,18 @@ parse_feature_files = function(features_table,
     feature_file = tryCatch(import.bw(path_file),
                             error = function(e) tryCatch(import.bedGraph(path_file),
                                                          error = function(e) tryCatch(import.bed(path_file),
-                                                                                      error = function(e) makeGRangesFromDataFrame(read_tsv(path_file),
-                                                                                                                                   keep.extra.columns = T))))
+                                                                                      error = function(e) tryCatch(makeGRangesFromDataFrame(read_tsv(path_file), keep.extra.columns = T),
+                                                                                                                  error = function(e) import.wig(path_file)))))
+    # keep only metadata without 0s
+    for(metadata_col in names(elementMetadata(feature_file))){
+      if(!"FALSE" %in% unique(unique(elementMetadata(feature_file)[[metadata_col]]) == 0)){
+        mcols(feature_file)[[metadata_col]] <- NULL
+      }
+    }
+    # make sure that there is only 1 (and not more) metadata columns
+    if(length(names(elementMetadata(feature_file))) != 1){
+      stop(paste0("Feature file ", feature, " has 0 or >1 metadata columns! Exiting...\n"))
+    }
 
     # add feature name as the metadata (score) colname
     colnames(elementMetadata(feature_file)) = feature
@@ -80,14 +93,14 @@ parse_feature_files = function(features_table,
       
       if(nrow(range_gaps) >= 1){
     
-        cat(sprintf("%s contains gaps; adding %ibp on both sides of its ranges...\n", feature, nt_extend))
+        cat(sprintf("%s contains gaps; adding %fbp on both sides of its ranges...\n", feature, nt_extend))
         
         ## ...shorten gaps between ranges (+- nt_extend bp) to ensure more SNVs overlap with this repmark
         
         # (BUT IF the adjacent range is CLOSER than nt_extend*2 + 1 bp, just join them)
         if(min(data.frame(range_gaps)$width) <= nt_extend*2 + 1){
           
-          cat(sprintf("Some of %s's gaps are shorter than %ibp, this will take longer...\n", feature, nt_extend*2+1))
+          cat(sprintf("Some of %s's gaps are shorter than %fbp, this will take longer...\n", feature, nt_extend*2+1))
           
           feature_file = data.frame(feature_file) %>% 
             arrange(start) %>% 
@@ -115,7 +128,7 @@ parse_feature_files = function(features_table,
           
           } else { # every gap > nt_extend*2+1 bp --> just add +- nt_extend bp to every range
             
-            cat(sprintf("None of %s's gaps are shorter than %ibp, this will be fast!\n", feature, nt_extend*2 +1))
+            cat(sprintf("None of %s's gaps are shorter than %fbp, this will be fast!\n", feature, nt_extend*2 +1))
           
             feature_file = data.frame(feature_file) %>% 
               arrange(start) %>% 
@@ -133,201 +146,4 @@ parse_feature_files = function(features_table,
     gc()
   }
   return(output_list)
-}
-
-
-
-
-###########################################################################################################################
-
-### function for matching trinucleotide(32) proportions between genomic coordinates
-# takes trinucleotide(32) count dataframe with N rows (1 per genomic coordinate, e.g. chr1_1_237572_bgGenome, chr1_237573_237942_CTCF_cohesin_peak...) × 32 trinuc type columns
-# removes trinucs(32) counts, so that trinucs(32) proportions are "matched" across all bins
-# modified from marina/fran's
-
-trinuc_matching = function(full_tracks_trinuc32_freq, 
-                           stoppingCriterion = 0.001, # desired Euclidean score (max. overall distance between any bin's trinuc frequencies and all-bin-average trinuc frequencies)
-                           maxIter = 20000*length(full_tracks_trinuc32_freq), # to prevent endless loops (in reality this can be a very high #, this works quite fast)
-                           max_fraction_removed_trinucs = 0.5, # don't allow to remove more total trinucleotide counts than this proportion of the total original trinucleotide counts
-                           acceleration_score = 1, # multiplied to the n of counts to be removed at each iteration
-                           n_finish_tokens = 1000){ # maybe not needed
-  ## auxiliar functions
-  rowNorm = function(m){t(apply(m, 1, function(x){x/sum(x)}))} # normalize each row to sum to 1
-  euclidean = function(a, b){sqrt(sum((a-b)^2))} 
-  
-  ## initialize constants/variables
-  euclidean_score = 10000000000000000000 # init as an absurdly large value
-  mineuclidean_score = euclidean_score
-  counts = full_tracks_trinuc32_freq
-  counts_mineuclidean = counts
-  finish_token = 0
-  removed_trinucs = 0
-  total_orig_trinucs = sum(rowSums(counts))
-  max_removed_trinucs = total_orig_trinucs * max_fraction_removed_trinucs
-  iter = 0
-  start_time = Sys.time()
-
-  while ( TRUE ) {
-    
-    iter = iter + 1
-    
-    ## check if we have reached max. num. iterations
-    if (iter == maxIter) {
-      counts = counts_mineuclidean
-      cat( sprintf("Stopping optimization - maximum number of iterations reached - Returning min Euclidean score results (%f)\n", mineuclidean_score) );
-      break
-    }  
-    
-    ## check if we have already removed too many trinucs
-    if(removed_trinucs > max_removed_trinucs){
-      counts = counts_mineuclidean
-      cat(sprintf("Stopping optimization at iter %i/%i - %.02f%% of the %f original trinucs have already been removed -- Exiting and returning min Euclidean score results (%f)\nAnalysis terminated after %s\n", iter, maxIter, removed_trinucs/total_orig_trinucs*100, total_orig_trinucs, mineuclidean_score, paste(round(Sys.time() - start_time, 2), units(Sys.time() - start_time))))
-      break
-    }
-
-    ## mark which bins have too few trinucs, to ignore them for offender search (i.e. less than the total current sum of trinucs (across rows AND columns) divided by the number of bins)
-    too_few_trinuc_bins = filter(data.frame(rowSums(counts)),
-                                 # WARNING: dividing by 2 so that not too many bins are excluded
-                                 `rowSums.counts.` <= (sum(rowSums(counts)) / length(rownames(counts)) / 2)) %>%
-      rownames
-    
-    ## check whether every row has been declared as unusable (would result in an emtpy 'offender')
-    if(length(rownames(counts)) - length(too_few_trinuc_bins) <= 0){
-      counts = counts_mineuclidean
-      cat(sprintf("ERROR: Cannot continue optimization at iter %i/%i - 'too_few_trinuc_bins' comprises all possible bins, so no offender bin can be defined -- Exiting and returning min Euclidean score results (%f)\nAnalysis terminated after %s\n", iter, maxIter, mineuclidean_score, paste(round(Sys.time() - start_time, 2), units(Sys.time() - start_time))))
-      break
-    }
-
-    ###################################################
-    ## get OFFENDER ROW WITH CORRECTABLE COLUMN
-    
-    ## all rows are used for the "baseline mean frequencies"
-    meanFreqs = colMeans(rowNorm(counts), na.rm = T)
-    # ...but the 'too_few_trinuc_bins' are excluded from being candidates for offender...
-    freqs_not_too_few_trinuc_bins = rownames_to_column(counts, "bin") %>% 
-      ## ...so filter out bins (rows) with too few trinucs
-      filter(! bin %in% too_few_trinuc_bins) %>% 
-      column_to_rownames("bin") %>% 
-      rowNorm()
-    
-    ## LOOP HERE UNTIL WE HAVE AN OFFENDER ROW WITH CORRECTABLE COLUMN
-    
-    got_offender_row_corr_col = F
-    
-    while (got_offender_row_corr_col == F){
-      
-      # find the 'offender' row, which is the row most different from the meanFreqs vector
-      offender_name = which.max(apply(freqs_not_too_few_trinuc_bins, 1, function(x){ euclidean(x, meanFreqs) })) %>% # note that the meanFreqs DOES use ALL rows
-        names()
-      offender_row = rownames_to_column(counts, "bin") %>% 
-        filter(bin == offender_name) %>% 
-        column_to_rownames("bin")
-      offender_row_freqs = rowNorm(offender_row)
-
-      diffs = data.frame(meanFreqs - offender_row_freqs)
-      
-      if(sum(offender_row) <= 0){
-        counts = counts_mineuclidean
-        cat(sprintf("ERROR: Cannot continue optimization at iter %i/%i - no more nts at the offender bin '%s' -- Exiting and returning min Euclidean score results (%f)\nAnalysis terminated after %s\n", iter, maxIter, offender_name, mineuclidean_score, paste(round(Sys.time() - start_time, 2), units(Sys.time() - start_time))))
-        break
-      }
-  
-      ## in that row, find the column which is most responsible for the difference; however importantly we care ONLY about the negative differences in this vector! i.e. those are the cases where the offending row has HIGHER freqs (meaning we can correct that by removing sites... we can't add sites!!)
-      
-      is.correctableCol.zero = T
-      
-      while(is.correctableCol.zero == T){
-        
-        correctableColIndex = which.min(diffs)
-        correctableCol = names(correctableColIndex)
-        correctableColCounts = select(offender_row, all_of(correctableCol))
-  
-        if(correctableColCounts <= 0) {
-          cat( sprintf("WARNING: At iter %i/%i, counts exhausted at bin '%s's 'correctableCol' (trinuc %s), trying next `which.min(diffs)` trinuc - Euclidean score: %f\n%s have passed\n", iter, maxIter, offender_name, correctableCol, as.numeric(euclidean_score), paste(round(Sys.time() - start_time, 2), units(Sys.time() - start_time))) )
-          
-          diffs = mutate_at(diffs, 
-                            vars(all_of(correctableCol)), 
-                            ~gsub(".*", NA, .))
-          
-        } else {
-          is.correctableCol.zero = F
-          
-          # check if we have removed all trinuc from diffs (so we should move on to next row to be used as offender)
-          if(length(diffs) == 0){
-  
-            # don't use this bin anymore as offender
-            too_few_trinuc_bins = c(too_few_trinuc_bins, offender_name)
-            
-            cat(sprintf("WARNING: At iter %i/%i, removed all trinuc from 'diffs'; Bin '%s' is not used anymore as 'offender' bin - Euclidean score: %f\n%s have passed\n", iter, maxIter, offender_name, as.numeric(euclidean_score), paste(round(Sys.time() - start_time, 2), units(Sys.time() - start_time))))
-          
-          } else {
-            # end loop
-            got_offender_row_corr_col = T
-          }
-        }
-      }
-  
-      if(length(rownames(counts)) - length(too_few_trinuc_bins) <= 0){
-        counts = counts_mineuclidean
-        cat(sprintf("ERROR: Cannot continue optimization at iter %i/%i - 'too_few_trinuc_bins' comprises all possible bins, so no offender bin can be defined -- Exiting and returning min Euclidean score results (%f)\nAnalysis terminated after %s\n", iter, maxIter, mineuclidean_score, paste(round(Sys.time() - start_time, 2), units(Sys.time() - start_time))))
-        break
-      }
-    }
-    
-    ## calculate euclidean score (how diff. are the offender row freqs. from the mean freqs. across the table)
-    euclidean_score = euclidean(offender_row_freqs, meanFreqs)
-    
-    # store counts table if euclidean_score is new minimum
-    if(euclidean_score < mineuclidean_score){
-      mineuclidean_score = euclidean_score
-      counts_mineuclidean = counts
-    }
-    
-    # did we reduce the difference enough?
-    if (euclidean_score <= stoppingCriterion) {
-      cat(sprintf("Successfully completed optimization: Euclidean score (%f) lower than %f - Returning current results\n", euclidean_score, stoppingCriterion) )
-      break
-    }
-  
-
-    ###############################
-    ### subtract counts from a trinuc of the offender bin
-    
-    ### note this adjustment (subtraction) is too conservative, but by iterating it should converge to the right value
-    subtractThis = as.numeric(round(diffs[correctableColIndex] * sum(offender_row))) * acceleration_score
-    
-    if ( subtractThis == 0 ) {
-      # try ×'n_finish_tokens' times more
-      subtractThis = 10
-      finish_token = finish_token + 1
-      cat( sprintf("Count reduction <= 0.5 - Euclidean score: %f - %i/%i tokens used, so continue...\n", euclidean_score, finish_token, n_finish_tokens) )
-      
-      if(finish_token >= n_finish_tokens){
-        counts = counts_mineuclidean
-        cat( sprintf("Stopping optimization - count reduction <= 0.5 and all %i tokens have been used - Returning min Euclidean score results (%f)\n", n_finish_tokens, mineuclidean_score) )
-        break
-      }
-    }
-    
-    ## now simply decrease counts in the responsible column to get closer to the mean
-    counts = rownames_to_column(counts, "bin") %>% 
-      mutate_at(vars(all_of(correctableCol)),
-                ~ifelse(bin == offender_name,
-                        . + subtractThis,
-                        .)) %>% 
-      column_to_rownames("bin")
-    
-    removed_trinucs = removed_trinucs + abs(subtractThis)
-    
-
-    ## output log every 100th iter
-    if(iter %% 100 == 0){
-      cat( sprintf("Running iter %i/%i... Subtracted %i %s at bin '%s' - %.02f%% trinucs have been removed - Euclidean score: %f\n%s have passed\n", iter, maxIter, abs(as.numeric(subtractThis)), correctableCol, offender_name, removed_trinucs/total_orig_trinucs*100, euclidean_score, paste(round(Sys.time() - start_time, 2), units(Sys.time() - start_time))))
-    }
-    
-    ## keep iterating...
-  }
-  
-  ## return final counts_mineuclidean tables
-  return(counts)
 }

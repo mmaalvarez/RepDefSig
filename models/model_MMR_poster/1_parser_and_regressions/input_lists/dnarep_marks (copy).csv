@@ -1,0 +1,9 @@
+name,path
+RepliSeq,/g/strcombio/fsupek_data/users/malvarez/git/trinucleotide_matching_tracks/matched_beds_symlinks/RepliSeq_pooled8_merged_1-3_vs_4-6__3ntMatched_euclidean-0.01.bed.gz #				group 1: between-bin mut. rate differences (reg. coeff.) are KNOWN TO CHANGE between MMRwt and MMRdef samples
+H3K36me3,/g/strcombio/fsupek_data/users/malvarez/git/trinucleotide_matching_tracks/matched_beds_symlinks/H3K36me3_pooled8_merged_2bins__3ntMatched_euclidean-0.1737.bed.gz #				group 1
+RnaSeq,/g/strcombio/fsupek_data/users/malvarez/git/trinucleotide_matching_tracks/matched_beds_symlinks/RnaSeq-txnStrandCorrected_pooled8_merged_2bins__3ntMatched_euclidean-0.0847.bed.gz #	group 2: ----------------------------------------------------KNOWN TO NOT CHANGE ----------------------------
+DHS,/g/strcombio/fsupek_data/users/malvarez/git/trinucleotide_matching_tracks/matched_beds_symlinks/DNase_pooled8_merged_2bins__3ntMatched_euclidean-0.xxxx.bed.gz #						group 2
+SETD2,/g/strcombio/fsupek_data/users/malvarez/git/trinucleotide_matching_tracks/matched_beds_symlinks/SETD2__3ntMatched_euclidean-XXXX.bed.gz #												group 3: --------------------------------------------------UNKNOWN WHETHER CHANGE ---------------------------
+MSH6,/g/strcombio/fsupek_data/users/malvarez/git/trinucleotide_matching_tracks/matched_beds_symlinks/MSH6__3ntMatched_euclidean-XXXX.bed.gz #												group 3
+exons,/g/strcombio/fsupek_data/users/malvarez/git/trinucleotide_matching_tracks/matched_beds_symlinks/lifted_hg19_chr_exons_vs_bgGenome__3ntMatched_euclidean-0.0679.bed.gz #				group 3
+H3K36me2,/g/strcombio/fsupek_data/users/malvarez/git/trinucleotide_matching_tracks/matched_beds_symlinks/H3K36me2_pooled__3ntMatched_euclidean-XXXX.bed.gz #								group 3

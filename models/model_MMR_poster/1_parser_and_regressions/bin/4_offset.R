@@ -42,8 +42,8 @@ map_features_binarized = ifelse(interactive(),
                                   #Sys.glob(paste0("../work/[[:alnum:]][[:alnum:]]/*/map_features_binarized_chr18.tsv"))[1],
                                   #Sys.glob(paste0("../work/[[:alnum:]][[:alnum:]]/*/map_features_binarized_chr19.tsv"))[1],
                                   #Sys.glob(paste0("../work/[[:alnum:]][[:alnum:]]/*/map_features_binarized_chr20.tsv"))[1],
-                                  Sys.glob(paste0("../work/[[:alnum:]][[:alnum:]]/*/map_features_binarized_chr21.tsv"))[1],
-                                  Sys.glob(paste0("../work/[[:alnum:]][[:alnum:]]/*/map_features_binarized_chr22.tsv"))[1])),
+                                  Sys.glob(paste0("map_features_binarized_chr21.tsv"))[1],
+                                  Sys.glob(paste0("map_features_binarized_chr22.tsv"))[1])),
                                   #Sys.glob(paste0("../work/[[:alnum:]][[:alnum:]]/*/map_features_binarized_chrX.tsv"))[1])),
                                   read_tsv),
                                 no = lapply(list(args), read_tsv)) %>%
@@ -53,12 +53,11 @@ gc()
 
 
 ### calculate offset (log(n trinuc of each of the 32 types (e.g. ACT) that exist in each RT-dnarepmarks combination, and could therefore be any A(C>D)T SNV))
-
 offset_temp = map_features_binarized %>%
   # sum up trinuc32 frequencies within repliseq-dnamarks profile
   select(-chrom) %>% 
-  # RepliSeq == 0 has only NNNNNN.. sequences, so no trinucs are found.. so remove Repliseq==0 bin
-  filter(RepliSeq != 0) %>% 
+  # RepliSeq == 0 has only NNNNNN.. sequences, so no trinucs are found.. so remove Repliseq==0 bin (IF RepliSeq EXISTS)
+  filter(if (exists("RepliSeq", where = cur_data())) RepliSeq != 0 else TRUE) %>% 
   group_by_at(vars(!matches("^[A,C,G,T][C,T][A,C,G,T]$"))) %>% 
   summarise_at(vars(matches("^[A,C,G,T][C,T][A,C,G,T]$")),
                ~ sum(.)) %>% 
@@ -90,11 +89,22 @@ offset_temp = offset_temp %>%
 
 ## add an offset==0 for all RT×dnamarks combinations that do not exist, e.g. if in `RT_1 × ogg30_high × ogg60_low × UV1_high × UV2_high × MSH6_low × ...` genome regions there are no SNVs, offset==0
 # NOTE: usually this is not needed, as all possible combinations exist, but in that case the merge(offset, empty_offset, all = T) does nothing
-ncols = length(names(offset_temp)) - 3 # 3 == tri + freq_trinuc32 + repliseq columns
-row_high = c("1", rep("high", ncols), "A(C>A)A")
-row_low = c("2", rep("low", ncols), "A(C>G)A")
-col_repliseq = data.frame(seq(2, 6, 1)) %>% `colnames<-`("RepliSeq") %>% mutate(RepliSeq = as.character(RepliSeq))
-col_tri = data.frame(unique(offset_temp$tri)) %>% `colnames<-`("tri") %>% filter(!tri %in% c("A(C>A)A", "A(C>G)A"))
+
+if(("RepliSeq" %in% colnames(offset_temp))  &  (0 %in% unique(offset_temp$RepliSeq))){
+  ncols = length(names(offset_temp)) - 3 # 3 == tri + freq_trinuc32 + Repliseq columns
+  row_high = c("1", rep("high", ncols), "A(C>A)A")
+  row_low = c("2", rep("low", ncols), "A(C>G)A")
+  col_tri = data.frame(unique(offset_temp$tri)) %>% `colnames<-`("tri") %>% filter(!tri %in% c("A(C>A)A", "A(C>G)A"))
+  col_repliseq = data.frame(seq(2, 6, 1)) %>% `colnames<-`("RepliSeq") %>% mutate(RepliSeq = as.character(RepliSeq))
+  
+} else {
+  # no RepliSeq (or there is RepliSeq, but not with a "0" level)
+  ncols = length(names(offset_temp)) - 2 # 2 == tri + freq_trinuc32 columns
+  row_high = c(rep("high", ncols), "A(C>A)A")
+  row_low = c(rep("low", ncols), "A(C>G)A")
+  col_tri = data.frame(unique(offset_temp$tri)) %>% `colnames<-`("tri") %>% filter(!tri %in% c("A(C>A)A", "A(C>G)A"))
+}
+
 
 empty_offset = data.frame(matrix(ncol = length(names(offset_temp)))) %>% 
   `colnames<-`(names(offset_temp)) %>% 
@@ -102,7 +112,7 @@ empty_offset = data.frame(matrix(ncol = length(names(offset_temp)))) %>%
   rbind(row_high) %>% 
   rbind(row_low) %>% 
   drop_na %>% 
-  merge(col_repliseq, all = T) %>% 
+  {if (exists("col_repliseq")) merge(., col_repliseq, all = T) else .} %>% 
   merge(col_tri, all = T) %>% 
   expand(!!! syms(names(offset_temp)[!str_detect(names(offset_temp), "freq_trinuc32")])) %>%
   drop_na
@@ -119,6 +129,14 @@ if(!is.null(empty_offset$A3A_TpCpH_hairpins)){
            A3A_TpCpH_hairpins = gsub("high", "bgGenome", A3A_TpCpH_hairpins))
 }
 
+## correct feature levels (in case they are not "high" or "low")
+# WARNING: this assumes that all features have 2 (and only 2) levels
+for(feature in names(empty_offset)){
+  empty_offset = empty_offset %>%
+    mutate(!!sym(feature) := gsub("low", unique(offset_temp[[feature]])[1], !!sym(feature)),
+           !!sym(feature) := gsub("high", unique(offset_temp[[feature]])[2], !!sym(feature)))
+}
+  
 offset = merge(offset_temp, empty_offset, all = T) %>% 
   replace_na(list(freq_trinuc32 = 0)) %>% 
   mutate(trinuc32 = gsub("\\(", "", tri),
@@ -126,3 +144,54 @@ offset = merge(offset_temp, empty_offset, all = T) %>%
   relocate(trinuc32, .before = tri)
 
 write_tsv(offset, "offset.tsv")
+
+
+###############################################
+### QC
+# check that distribution of trinucs after merging all features and chromosomes remain matched
+
+# central base is bold
+trinuc32_sorted = c("A𝗖A","A𝗖C","A𝗖G","A𝗖T","C𝗖A","C𝗖C","C𝗖G","C𝗖T","G𝗖A","G𝗖C","G𝗖G","G𝗖T","T𝗖A","T𝗖C","T𝗖G","T𝗖T","A𝗧A","A𝗧C","A𝗧G","A𝗧T","C𝗧A","C𝗧C","C𝗧G","C𝗧T","G𝗧A","G𝗧C","G𝗧G","G𝗧T","T𝗧A","T𝗧C","T𝗧G","T𝗧T")
+
+trinuc_dist_QC = offset %>% 
+  select(-tri) %>% 
+  distinct %>% 
+  pivot_longer(cols = !(matches("trinuc32") | matches("freq_trinuc32")),
+               names_to = "feature", values_to = "levels") %>%
+  group_by(trinuc32, feature, levels) %>%
+  summarise(freq_trinuc32 = sum(freq_trinuc32)) %>%
+  group_by(feature, levels) %>%
+  mutate(prop_trinuc32 = freq_trinuc32 / sum(freq_trinuc32)) %>% 
+  ungroup() %>%
+  # central base is bold
+  mutate(trinuc32 = gsub("C", "𝗖", trinuc32),
+         trinuc32 = gsub("^𝗖", "C", trinuc32),
+         trinuc32 = gsub("𝗖$", "C", trinuc32),
+         trinuc32 = gsub("T", "𝗧", trinuc32),
+         trinuc32 = gsub("^𝗧", "T", trinuc32),
+         trinuc32 = gsub("𝗧$", "T", trinuc32),
+         trinuc32 = factor(trinuc32, levels = trinuc32_sorted)) %>% 
+  arrange(trinuc32, feature, levels)
+
+trinuc_dist_QC_plot = ggplot(trinuc_dist_QC,
+                             aes(x = trinuc32,
+                                 y = prop_trinuc32,
+                                 fill = levels)) +
+  scale_y_continuous(breaks = c(seq(0, 0.02, 0.01), 1/32, seq(0.04, max(trinuc_dist_QC$prop_trinuc32), 0.01))) +
+  geom_col(width = 0.6,
+           position = position_dodge(width = 0.5)) +
+  geom_hline(yintercept = 1/32, linetype = "dashed") +
+  facet_wrap(facets = ~feature,
+             scales = "free") +
+  xlab("32 trinucleotide types (collapsed from 64)") +
+  ylab("Fraction of the 32 trinucleotide types") +
+  theme_classic() +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 0))
+
+ggsave("trinuc_dist_QC.jpg",
+       plot = trinuc_dist_QC_plot,
+       device = "jpg",
+       width = 10,
+       height = 5.6,
+       dpi = 600,
+       bg = "white")
