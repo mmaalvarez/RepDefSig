@@ -48,73 +48,100 @@ names_conversion_table = bind_rows(PCAWG_names_conversion_table, TCGA_names_conv
   dplyr::select(sample_id, sample_id2)
 
 
-## CTCF + cohesin
-CTCFcohesin_CC2TT_genomewide = read_tsv("/g/strcombio/fsupek_cancer3/malvarez/WGS_tumors/somatic_variation/TCGA_PCAWG_Hartwig_CPTAC_POG_MMRFCOMMPASS/SHM/CTCF_cohesin/2_count_CC2TT_genomewide_in_tumors/res/samples_CC2TT_genomewide_counted.tsv")
-  
-## N A3A-putative TpC2DpH mut pairs IN SKIN (to compare to CTCF's CC>TT caused by UV in skin, but A3A can be confounded by UV, i.e. in skin)
-TpC2DpH_mutpairs_SKIN_SKIN = read_tsv("/g/strcombio/fsupek_cancer3/malvarez/WGS_tumors/somatic_variation/TCGA_PCAWG_Hartwig_CPTAC_POG_MMRFCOMMPASS/SHM/A3A_hairpins/2_SKIN_count_1kbpairs_TpC2DpH_in_tumors/res/samples_A3A_1kbpairs_TpC2DpH_counted.tsv")
+##### dMMR vs MMRwt
+K562 = read_tsv("/g/strcombio/fsupek_cancer3/malvarez/WGS_tumors/somatic_variation/cell_lines/marcel_K562/metadata/WGS_clones_info.tsv") %>% 
+  select(sample_id, `MMR deficiency expected`) %>% 
+  rename("dMMR" = "MMR deficiency expected") %>% 
+  mutate(group = "K562")
+iPSC = read_tsv("../../1_parser_and_regressions/input_lists/Zou_iPSC_MMRwt.tsv", col_names = F) %>% 
+  mutate(dMMR = "MMRwt") %>% 
+  bind_rows(read_tsv("../../1_parser_and_regressions/input_lists/Zou_iPSC_MMRko.tsv", col_names = F) %>% 
+              mutate(dMMR = "MMR-/-")) %>% 
+  rename("sample_id" = "X1") %>% 
+  mutate(group = "iPSC")
+tumors = read_tsv("../../1_parser_and_regressions/input_lists/tumors_MSI_MSS_metadata.tsv") %>% 
+  replace_na(list(MSI_status = "NA")) %>% 
+  rename("dMMR" = "MSI_status",
+         "group" = "source") %>% 
+  select(sample_id, dMMR, group)
+
+samples_dMMR_status = bind_rows(K562, iPSC, tumors) %>% 
+  #rename("sample_id2" = "sample_id") %>% 
+  left_join(names_conversion_table) %>% 
+  # mutate(sample_id = ifelse(is.na(sample_id),
+  #                           sample_id2,
+  #                           sample_id)) %>% 
+  select(-sample_id2)
 
 
-metadata = c("/g/strcombio/fsupek_cancer3/malvarez/WGS_tumors/somatic_variation/cell_lines/kucab_2019/processed/sample_treatments.tsv",
-             "/g/strcombio/fsupek_cancer3/malvarez/WGS_tumors/somatic_variation/cell_lines/zou_2021/processed/sample_gene_ko.tsv",
-             "/g/strcombio/fsupek_cancer3/malvarez/WGS_tumors/somatic_variation/cell_lines/RPE1_POLH_WTvsKO/1_parse_vcfs/sample_treatments.tsv",
-             "/g/strcombio/fsupek_cancer3/malvarez/WGS_tumors/somatic_variation/TCGA_PCAWG_Hartwig_CPTAC_POG_MMRFCOMMPASS/metadata/metadatacomb_metadata_final_6datasets__noconsent_44plus11_samples_removed.csv") %>% 
-  # only sample_id and info* columns are selected
-  map_df(~read_tsv(.x)) %>% 
-  mutate(dataset = ifelse(str_detect(sample_id, "MSM0"),
-                          "Kucab et al. 2019",
-                          ifelse(str_detect(sample_id, "MSK0"),
-                                 "Zou et al. 2021",
-                                 ifelse(str_detect(sample_id, "POLH"),
-                                        "RPE1 POLHwt/ko ctrl/UV",
-                                        source))),
-         info1 = ifelse(str_detect(sample_id, "MSK0"),
-                        paste0(info1, "ko"),
-                        info1),
-         info2 = gsub("^[a-z]_", "", info2), 
-         info2 = ifelse(str_detect(sample_id, "MSM0") | str_detect(sample_id, "MSK0"),
-                        gsub("DNA damage response inhibitors", "DNA damage resp. inh.", info2),
-                        info2),
-         info2 = ifelse(str_detect(sample_id, "MSK0"),
-                        paste0(info2, " (pathway)"),
-                        ifelse(str_detect(sample_id, "MSM0"),
-                               paste0(info2, " (treatment)"),
-                               info2))) %>% 
-  rename("sample_id2" = "sample_id") %>% 
-  merge(names_conversion_table, all = T) %>% 
-  mutate(sample_id = ifelse(is.na(sample_id),
-                            ifelse(!is.na(sample_id2),
-                                   sample_id2,
-                                   sample_id_2),
-                            sample_id)) 
 
-metadata_CTCFcohesin_CC2TT_genomewide = metadata %>% 
-  merge(CTCFcohesin_CC2TT_genomewide, all = T) %>% 
-  select(-c(sample_id, sample_id_2)) %>% 
-  rename("sample_id" = "sample_id2") %>% 
-  merge(CTCFcohesin_CC2TT_genomewide, all = T) %>% 
-  merge(names_conversion_table, all = T) %>% 
-  select(-sample_id2) %>% 
-  distinct
-  
-metadata_TpC2DpH_mutpairs_SKIN = metadata %>% 
-  merge(TpC2DpH_mutpairs_SKIN, all = T) %>% 
-  mutate(sample_id = ifelse(sample_id!=sample_id2 & !is.na(sample_id2),
-                            sample_id2,
-                            sample_id)) %>% 
-  distinct() %>% 
-  group_by(sample_id) %>% 
-  summarise_all(funs(toString(na.omit(.)))) %>% 
-  mutate_all(na_if, "") %>% 
-  distinct
-
-metadata_CC2TT_TpC2DpH = merge(metadata_CTCFcohesin_CC2TT_genomewide,
-                               metadata_TpC2DpH_mutpairs_SKIN, all = T) %>% 
-  filter(!(is.na(CC2TT_genomewide) & is.na(A3A_1kbpairs_TpC2DpH))) %>% 
-  distinct() %>% 
-  group_by(sample_id) %>% 
-  summarise_all(funs(toString(na.omit(.)))) %>% 
-  mutate_all(na_if, "")
+# ## CTCF + cohesin
+# CTCFcohesin_CC2TT_genomewide = read_tsv("/g/strcombio/fsupek_cancer3/malvarez/WGS_tumors/somatic_variation/TCGA_PCAWG_Hartwig_CPTAC_POG_MMRFCOMMPASS/SHM/CTCF_cohesin/2_count_CC2TT_genomewide_in_tumors/res/samples_CC2TT_genomewide_counted.tsv")
+#   
+# ## N A3A-putative TpC2DpH mut pairs IN SKIN (to compare to CTCF's CC>TT caused by UV in skin, but A3A can be confounded by UV, i.e. in skin)
+# TpC2DpH_mutpairs_SKIN_SKIN = read_tsv("/g/strcombio/fsupek_cancer3/malvarez/WGS_tumors/somatic_variation/TCGA_PCAWG_Hartwig_CPTAC_POG_MMRFCOMMPASS/SHM/A3A_hairpins/2_SKIN_count_1kbpairs_TpC2DpH_in_tumors/res/samples_A3A_1kbpairs_TpC2DpH_counted.tsv")
+# 
+# 
+# metadata = c("/g/strcombio/fsupek_cancer3/malvarez/WGS_tumors/somatic_variation/cell_lines/kucab_2019/processed/sample_treatments.tsv",
+#              "/g/strcombio/fsupek_cancer3/malvarez/WGS_tumors/somatic_variation/cell_lines/zou_2021/processed/sample_gene_ko.tsv",
+#              "/g/strcombio/fsupek_cancer3/malvarez/WGS_tumors/somatic_variation/cell_lines/RPE1_POLH_WTvsKO/1_parse_vcfs/sample_treatments.tsv",
+#              "/g/strcombio/fsupek_cancer3/malvarez/WGS_tumors/somatic_variation/TCGA_PCAWG_Hartwig_CPTAC_POG_MMRFCOMMPASS/metadata/metadatacomb_metadata_final_6datasets__noconsent_44plus11_samples_removed.csv") %>% 
+#   # only sample_id and info* columns are selected
+#   map_df(~read_tsv(.x)) %>% 
+#   mutate(dataset = ifelse(str_detect(sample_id, "MSM0"),
+#                           "Kucab et al. 2019",
+#                           ifelse(str_detect(sample_id, "MSK0"),
+#                                  "Zou et al. 2021",
+#                                  ifelse(str_detect(sample_id, "POLH"),
+#                                         "RPE1 POLHwt/ko ctrl/UV",
+#                                         source))),
+#          info1 = ifelse(str_detect(sample_id, "MSK0"),
+#                         paste0(info1, "ko"),
+#                         info1),
+#          info2 = gsub("^[a-z]_", "", info2), 
+#          info2 = ifelse(str_detect(sample_id, "MSM0") | str_detect(sample_id, "MSK0"),
+#                         gsub("DNA damage response inhibitors", "DNA damage resp. inh.", info2),
+#                         info2),
+#          info2 = ifelse(str_detect(sample_id, "MSK0"),
+#                         paste0(info2, " (pathway)"),
+#                         ifelse(str_detect(sample_id, "MSM0"),
+#                                paste0(info2, " (treatment)"),
+#                                info2))) %>% 
+#   rename("sample_id2" = "sample_id") %>% 
+#   merge(names_conversion_table, all = T) %>% 
+#   mutate(sample_id = ifelse(is.na(sample_id),
+#                             ifelse(!is.na(sample_id2),
+#                                    sample_id2,
+#                                    sample_id_2),
+#                             sample_id)) 
+# 
+# metadata_CTCFcohesin_CC2TT_genomewide = metadata %>% 
+#   merge(CTCFcohesin_CC2TT_genomewide, all = T) %>% 
+#   select(-c(sample_id, sample_id_2)) %>% 
+#   rename("sample_id" = "sample_id2") %>% 
+#   merge(CTCFcohesin_CC2TT_genomewide, all = T) %>% 
+#   merge(names_conversion_table, all = T) %>% 
+#   select(-sample_id2) %>% 
+#   distinct
+#   
+# metadata_TpC2DpH_mutpairs_SKIN = metadata %>% 
+#   merge(TpC2DpH_mutpairs_SKIN, all = T) %>% 
+#   mutate(sample_id = ifelse(sample_id!=sample_id2 & !is.na(sample_id2),
+#                             sample_id2,
+#                             sample_id)) %>% 
+#   distinct() %>% 
+#   group_by(sample_id) %>% 
+#   summarise_all(funs(toString(na.omit(.)))) %>% 
+#   mutate_all(na_if, "") %>% 
+#   distinct
+# 
+# metadata_CC2TT_TpC2DpH = merge(metadata_CTCFcohesin_CC2TT_genomewide,
+#                                metadata_TpC2DpH_mutpairs_SKIN, all = T) %>% 
+#   filter(!(is.na(CC2TT_genomewide) & is.na(A3A_1kbpairs_TpC2DpH))) %>% 
+#   distinct() %>% 
+#   group_by(sample_id) %>% 
+#   summarise_all(funs(toString(na.omit(.)))) %>% 
+#   mutate_all(na_if, "")
 
 
 
@@ -125,13 +152,15 @@ results_regressions = lapply(c("../../1_parser_and_regressions/res/results_real_
                              read_tsv) %>%
   Reduce(function(x, y) bind_rows(x, y), .) %>% 
   rename_with(~str_replace(., 'high$', '')) %>% 
-  rename_with(~str_replace(., 'hairpin_TpCpH$', '')) %>% 
-  rename_with(~str_replace(., 'CTCF_cohesin_peak$', '')) %>%
-  rename("sample_id2" = "sample_id") %>% 
-  left_join(metadata_CC2TT_TpC2DpH) %>% 
-  mutate(sample_id = ifelse(is.na(sample_id),
-                            sample_id2,
-                            sample_id)) %>% 
+  # rename_with(~str_replace(., 'hairpin_TpCpH$', '')) %>% 
+  # rename_with(~str_replace(., 'CTCF_cohesin_peak$', '')) %>%
+  # rename("sample_id2" = "sample_id") %>% 
+  # left_join(metadata_CC2TT_TpC2DpH) %>% 
+  mutate(sample_id = gsub("_REP1", "", sample_id)) %>% 
+  left_join(samples_dMMR_status) %>% 
+  # mutate(sample_id = ifelse(is.na(sample_id),
+  #                           sample_id2,
+  #                           sample_id)) %>% 
   select(-c(info1,info2)) %>% 
   drop_na(starts_with("estimate_")) %>% 
   select(sample_id, contains("estimate_"), contains("conf"))
@@ -181,47 +210,49 @@ coefficient_matrix_RcppML = bind_rows(mutate(coefficients_posmatrix, submatrix =
 
 
 ##### prepare condition_pathway_pairs for "good-model-score"
-repair_mark_pathways = coefficient_table %>% 
+#repair_mark_pathways = 
+condition_pathway_pairs = coefficient_table %>% 
   select(sample_id,  mark, estimate) %>% 
   rename("dna_repair_mark" = "mark",
          "sample_id" = "sample_id") %>% 
-  mutate(putative_repair_pathway_involved = ifelse(str_detect(dna_repair_mark, "OGG1_"),
-                                                   "BER",
-                                                   ifelse(str_detect(dna_repair_mark, "UV_"),
-                                                          "NER",
-                                                          ifelse(str_detect(dna_repair_mark, "MSH6_|SETD2_"),
-                                                                 "MMR",
-                                                                 ifelse(str_detect(dna_repair_mark, "XRCC4"),
-                                                                        "DSBR",
-                                                                        "other"))))) # ,#ADD TP53
-condition_pathway_pairs = metadata_CC2TT_TpC2DpH %>% 
-  select(info1, info2) %>% 
-  distinct %>% 
-  filter(! str_detect(info2, "[C,c]ontrol")) %>% 
-  mutate(putative_repair_pathway_involved = ifelse(str_detect(info1, "[G,g]amma"),
-                                                   "BER,DSBR",
-                                                   ifelse(str_detect(info2, "BER |[A,a]lkylating|[N,n]itrosamine"),
-                                                          "BER",
-                                                          ifelse(str_detect(info2, "NER |[A,a]romatic|[H,h]eterocyclic|PAH|Radiation") |
-                                                                   str_detect(info1, "platin"),
-                                                                 "NER",
-                                                                 ifelse(str_detect(info2, "MMR "),
-                                                                        "MMR",
-                                                                        ifelse(str_detect(info2, "DSB|DNA damage resp. inh.|[H,h]elicas|NHEJ|MMEJ|HR ") |
-                                                                                 str_detect(info1, "PARP|Etoposide|Bleomycin|Camptothecin|Olaparib|Temozolomide|Melphalan|Cyclophosphamide|Mechlorethamine"),
-                                                                               "DSBR",
-                                                                               "other")))))) %>% # ADD TP53
-  separate_rows(putative_repair_pathway_involved, sep = ",") %>% 
-  filter(!is.na(putative_repair_pathway_involved)) %>% 
-  left_join(metadata_CC2TT_TpC2DpH) %>% 
-  filter(sample_id %in% coefficient_table$sample_id) %>% 
-  arrange(putative_repair_pathway_involved) %>% 
-  left_join(repair_mark_pathways) %>% 
-  select(sample_id, dna_repair_mark) %>% 
+  left_join(samples_dMMR_status) %>% 
+  # mutate(putative_repair_pathway_involved = ifelse(str_detect(dna_repair_mark, "OGG1_"),
+  #                                                  "BER",
+  #                                                  ifelse(str_detect(dna_repair_mark, "UV_"),
+  #                                                         "NER",
+  #                                                         ifelse(str_detect(dna_repair_mark, "MSH6_|SETD2_"),
+  #                                                                "MMR",
+  #                                                                ifelse(str_detect(dna_repair_mark, "XRCC4"),
+  #                                                                       "DSBR",
+  #                                                                       "other"))))) # ,#ADD TP53
+# condition_pathway_pairs = metadata_CC2TT_TpC2DpH %>% 
+#   select(info1, info2) %>% 
+#   distinct %>% 
+#   filter(! str_detect(info2, "[C,c]ontrol")) %>% 
+#   mutate(putative_repair_pathway_involved = ifelse(str_detect(info1, "[G,g]amma"),
+#                                                    "BER,DSBR",
+#                                                    ifelse(str_detect(info2, "BER |[A,a]lkylating|[N,n]itrosamine"),
+#                                                           "BER",
+#                                                           ifelse(str_detect(info2, "NER |[A,a]romatic|[H,h]eterocyclic|PAH|Radiation") |
+#                                                                    str_detect(info1, "platin"),
+#                                                                  "NER",
+#                                                                  ifelse(str_detect(info2, "MMR "),
+#                                                                         "MMR",
+#                                                                         ifelse(str_detect(info2, "DSB|DNA damage resp. inh.|[H,h]elicas|NHEJ|MMEJ|HR ") |
+#                                                                                  str_detect(info1, "PARP|Etoposide|Bleomycin|Camptothecin|Olaparib|Temozolomide|Melphalan|Cyclophosphamide|Mechlorethamine"),
+#                                                                                "DSBR",
+#                                                                                "other")))))) %>% # ADD TP53
+#   separate_rows(putative_repair_pathway_involved, sep = ",") %>% 
+#   filter(!is.na(putative_repair_pathway_involved)) %>% 
+#   left_join(metadata_CC2TT_TpC2DpH) %>% 
+#   filter(sample_id %in% coefficient_table$sample_id) %>% 
+#   arrange(putative_repair_pathway_involved) %>% 
+#   left_join(repair_mark_pathways) %>% 
+#   select(sample_id, dna_repair_mark) %>% 
   rename("DNA repair\nactivity" = "dna_repair_mark") %>% 
   group_by(sample_id) %>%
   mutate(sample_id_possible_marks = n()) %>%
-  ungroup()
+  ungroup
 condition_pathway_pairs = condition_pathway_pairs %>% 
   rowwise %>% 
   mutate(max_sample_mark_score = 1 / length(unique(condition_pathway_pairs$sample_id)) / sample_id_possible_marks) %>%
@@ -234,7 +265,7 @@ condition_pathway_pairs = condition_pathway_pairs %>%
 # for plots
 jet.colors = colorRampPalette(c("gray", "red", "yellow", "green", "cyan", "blue", "magenta", "black"))
 
-for(optimal_k in seq(3, maxK)){
+for(optimal_k in seq(1, maxK*2)){
   
   # final NMF (here using RcppML::nmf instead of NMF::nmf as above)
   nmf_res = RcppML::nmf(coefficient_matrix_RcppML, 
@@ -245,24 +276,28 @@ for(optimal_k in seq(3, maxK)){
   # Signature exposures in samples
   exposures = nmf_res$h %>% 
     as_tibble(rownames = NA) %>% 
+    `colnames<-`(colnames(coefficient_matrix_RcppML)) %>% 
     rownames_to_column("Signature") %>%
     pivot_longer(cols = !contains("Signature"), names_to = "sample_id", values_to = "Exposure") %>% 
     # add metadata info (e.g. treatments, MSI, HR, smoking...)
-    merge(metadata_CC2TT_TpC2DpH, all = T) %>% 
+    #merge(metadata_CC2TT_TpC2DpH, all = T) %>% 
+    left_join(samples_dMMR_status) %>% 
+    rename("dataset" = "group") %>% 
     filter(!is.na(Exposure)) %>% 
     separate(sample_id, into = c("sample_id", "mut x-fold"), sep = "__", fill = "right") %>% 
     # simulated pos controls dont have CC>TT nor A3A mut pairs, so add them an average fake one so that their size is not tiny in the plots
-    mutate(CC2TT_genomewide = ifelse(is.na(CC2TT_genomewide) & !is.na(`mut x-fold`),
-                                     mean(metadata$CC2TT_genomewide, na.rm = T),
-                                     CC2TT_genomewide)) %>%
-    mutate(A3A_1kbpairs_TpC2DpH = ifelse(is.na(A3A_1kbpairs_TpC2DpH) & !is.na(`mut x-fold`),
-                                        mean(metadata$A3A_1kbpairs_TpC2DpH, na.rm = T),
-                                        A3A_1kbpairs_TpC2DpH)) %>%
+    # mutate(CC2TT_genomewide = ifelse(is.na(CC2TT_genomewide) & !is.na(`mut x-fold`),
+    #                                  mean(metadata$CC2TT_genomewide, na.rm = T),
+    #                                  CC2TT_genomewide)) %>%
+    # mutate(A3A_1kbpairs_TpC2DpH = ifelse(is.na(A3A_1kbpairs_TpC2DpH) & !is.na(`mut x-fold`),
+    #                                     mean(metadata$A3A_1kbpairs_TpC2DpH, na.rm = T),
+    #                                     A3A_1kbpairs_TpC2DpH)) %>%
     mutate(sample_id = gsub("-high_activity", "", sample_id),
            dataset = ifelse(is.na(dataset),
                             `mut x-fold`,
                             dataset),
-           Signature = factor(Signature, levels = unique(rownames(data.frame(nmf_res$h))))) %>%
+           Signature = gsub("^", "nmf", Signature), 
+           Signature = factor(Signature, levels = unique(paste0("nmf",rownames(data.frame(nmf_res$h)))))) %>%
     # highlight top hits for each signature
     group_by(Signature) %>% 
     mutate(is.hit = ifelse(Exposure==max(Exposure), "Top hit", NA))
@@ -270,11 +305,13 @@ for(optimal_k in seq(3, maxK)){
   # DNA repair mark weights in signatures
   weights = nmf_res$w %>% 
     as_tibble(rownames = NA) %>%
-    rownames_to_column("dna_repair_mark") %>%
+    `colnames<-`(paste0("nmf", seq(1, optimal_k))) %>% 
+    mutate(dna_repair_mark = rownames(coefficient_matrix_RcppML)) %>% relocate(dna_repair_mark) %>% 
+    #rownames_to_column("dna_repair_mark") %>%
     pivot_longer(cols = contains("nmf"), names_to = "signature", values_to = "weight") %>% 
     extract(dna_repair_mark, into = c("dna_repair_mark", "submatrix"), "(.*)_([^_]+$)") %>% 
-    mutate(dna_repair_mark = factor(dna_repair_mark, levels = unique(gsub("_...coeff", "", rownames(nmf_res$w)))),
-           signature = factor(signature, levels = unique(exposures$Signature))) %>% 
+    mutate(dna_repair_mark = factor(dna_repair_mark, levels = unique(gsub("_...coeff", "", rownames(coefficient_matrix_RcppML)))),
+           signature = factor(signature, levels = paste0("nmf", seq(1, optimal_k)))) %>% 
     arrange(dna_repair_mark, signature) %>% 
     group_by(dna_repair_mark, signature) %>% 
     ## subtract results of pos - results of neg, and get the absolute
@@ -284,23 +321,23 @@ for(optimal_k in seq(3, maxK)){
            "Signature" = "signature") %>% 
     relocate(Signature)
   
-  #####
-  ## calculate "good-model-score": 1 would mean that ALL samples have 100% exposure from the signature(s) that is contributed 100% by a specific DNArep mark whose mechanism/pathway overlaps completely with the sample´s condition (gene-/-, treatment...), and 0 the opposite
-  # actually only considering "ground-truth" sample_condition--DNArep_pathway pairs ('condition_pathway_pairs')
-  good_model_score_table = weights %>% 
-    merge(condition_pathway_pairs, all = T) %>% 
-    merge(exposures, all = T) %>% 
-    rename("sensical sample-mark pair" = "DNA repair\nactivity",
-           "mark weight" = "Weight",
-           "signature exposure" = "Exposure") %>% 
-    select(sample_id, "sensical sample-mark pair", Signature, "mark weight", "signature exposure", max_sample_mark_score) %>% 
-    mutate(sample_mark_score = `mark weight` * `signature exposure` * max_sample_mark_score) %>% 
-    arrange(sample_id, `sensical sample-mark pair`, Signature)
-  
-  #write_tsv(good_model_score_table, paste0("K", optimal_k, "_table.tsv"))
-  
-  good_model_score = drop_na(good_model_score_table) %>% pull(sample_mark_score) %>% sum
-  #####
+  # #####
+  # ## calculate "good-model-score": 1 would mean that ALL samples have 100% exposure from the signature(s) that is contributed 100% by a specific DNArep mark whose mechanism/pathway overlaps completely with the sample´s condition (gene-/-, treatment...), and 0 the opposite
+  # # actually only considering "ground-truth" sample_condition--DNArep_pathway pairs ('condition_pathway_pairs')
+  # good_model_score_table = weights %>% 
+  #   merge(condition_pathway_pairs, all = T) %>% 
+  #   merge(exposures, all = T) %>% 
+  #   rename("sensical sample-mark pair" = "DNA repair\nactivity",
+  #          "mark weight" = "Weight",
+  #          "signature exposure" = "Exposure") %>% 
+  #   select(sample_id, "sensical sample-mark pair", Signature, "mark weight", "signature exposure", max_sample_mark_score) %>% 
+  #   mutate(sample_mark_score = `mark weight` * `signature exposure` * max_sample_mark_score) %>% 
+  #   arrange(sample_id, `sensical sample-mark pair`, Signature)
+  # 
+  # #write_tsv(good_model_score_table, paste0("K", optimal_k, "_table.tsv"))
+  # 
+  # good_model_score = drop_na(good_model_score_table) %>% pull(sample_mark_score) %>% sum
+  # #####
   
   
   ### plotting
@@ -311,23 +348,29 @@ for(optimal_k in seq(3, maxK)){
     group_by(Signature) %>% 
     arrange(desc(Exposure)) %>% 
     slice_head(n = top_n_samples) %>% 
-    ungroup
+    ungroup %>% 
+    unite("Source / dMMR status", dataset, dMMR, sep = " ")
   
   ## exposures (only top_n_samples)
   pos = position_jitter(w = 0.25, h = 0, seed = 1)
-  exposures_plot = ggplot(filtered_exposures %>% 
-                            mutate(`Genome-wide CC>TT` = as.numeric(CC2TT_genomewide),
-                                   `5'-T(C>D)H-3' pairs` = as.numeric(A3A_1kbpairs_TpC2DpH)), 
+  exposures_plot = ggplot(filtered_exposures 
+                          # %>% 
+                          #   mutate(`Genome-wide CC>TT` = as.numeric(CC2TT_genomewide),
+                          #          `5'-T(C>D)H-3' pairs` = as.numeric(A3A_1kbpairs_TpC2DpH))
+                          , 
                           aes(x = Signature,
                               y = Exposure*100)) +
     scale_y_continuous(labels = function(x) sub("0+$", "", x)) +
-    geom_point(aes(fill = `Genome-wide CC>TT`,
-                   size = `5'-T(C>D)H-3' pairs`),
-                   shape = 21, #dataset, ##scale_shape_manual(values = c(21, 23, 25, seq(1,length(unique(filtered_exposures$dataset))-3,1))) +
-                   position = pos) +
-    scale_fill_gradient(low = "white", high = "black") +
-    guides(fill = guide_legend(override.aes = list(size=4, shape=21)),
-           shape = guide_legend(override.aes = list(size=4))) +
+    geom_point(aes(fill = `Source / dMMR status`#`Genome-wide CC>TT`,
+                   #size = `5'-T(C>D)H-3' pairs`
+                  ),
+               size = 10,
+               shape = 21, #dataset, ##scale_shape_manual(values = c(21, 23, 25, seq(1,length(unique(filtered_exposures$dataset))-3,1))) +
+               position = pos) +
+    scale_fill_manual(values = jet.colors(length(unique(filtered_exposures$`Source / dMMR status`)))) +
+    #scale_fill_gradient(low = "white", high = "black") +
+    guides(fill = guide_legend(override.aes = list(size=10, shape=21)),
+           shape = guide_legend(override.aes = list(size=10))) +
     ggrepel::geom_text_repel(aes(label = sample_id),
                              size = 3,
                              force = 5,
@@ -348,7 +391,7 @@ for(optimal_k in seq(3, maxK)){
           strip.text.x = element_blank(),
           panel.spacing = unit(6, "mm"),
           legend.title = element_text(size = 12),
-          legend.text = element_text(size = 8))
+          legend.text = element_text(size = 10))
   
   ## weights
   weights_plot = ggplot(weights %>%
@@ -367,7 +410,7 @@ for(optimal_k in seq(3, maxK)){
                        labels = function(x) sub("0+$", "", x)) +
     geom_col(aes(fill = `DNA repair\nactivity`)) +
     scale_fill_manual(values = jet.colors(length(levels(weights$`DNA repair\nactivity`)))) +
-    guides(fill = guide_legend(override.aes = list(size=6))) +
+    guides(fill = guide_legend(override.aes = list(size=10))) +
     facet_grid(cols = vars(Signature), scales = "free") +
     theme_classic() +
     theme(axis.text.y = element_text(angle = 90, hjust = 0.5),
@@ -375,7 +418,7 @@ for(optimal_k in seq(3, maxK)){
           strip.background = element_blank(),
           strip.text.x = element_blank(),
           panel.spacing = unit(2, "mm"),
-          legend.text = element_text(size = 8))
+          legend.text = element_text(size = 10))
   
   combined_plots = cowplot::plot_grid(NULL,
                                       cowplot::plot_grid(exposures_plot, NULL, nrow = 1, rel_widths = c(1, 0.04*(optimal_k/11))),
@@ -388,6 +431,5 @@ for(optimal_k in seq(3, maxK)){
          device = "jpg",
          width = 21.3,
          height = 12,
-         dpi = 700,
-         bg = "white")
+         dpi = 700)
 }

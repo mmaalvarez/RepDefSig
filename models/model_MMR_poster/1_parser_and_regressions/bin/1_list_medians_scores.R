@@ -33,8 +33,12 @@ dnarep_mark_file = tryCatch(import.bw(dnarep_mark_path),
 scores = elementMetadata(dnarep_mark_file)[[1]]
 if(is.numeric(scores)){
   median_score = median(scores)
-  }else{
-  median_score = paste(sort(unique(scores)), collapse = ",")
+  # check if "score" only contains numbers, even though it is labelled as a "character" column and these numbers are formatted as strings
+  } else if(all(grepl("^[-]?[0-9]+(\\.[0-9]+)?$",
+                      scores))){
+    median_score = median(as.numeric(scores))
+  } else{
+    median_score = paste(sort(unique(scores)), collapse = ",")
   }
   
 write_tsv(data.frame(dnarep_mark, median_score),

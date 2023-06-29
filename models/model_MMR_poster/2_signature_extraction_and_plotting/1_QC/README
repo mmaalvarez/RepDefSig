@@ -1,1 +1,3 @@
-'trinuc_dist_QC.pdf' is created in bin/4_offset.R
+'trinuc_dist_QC.jpg' is created in bin/4_offset.R, it's the trinuc proportions of feature files after matching and merging them into the offset
+
+in trinuc_proportions_unmatched_feature_tracks/res/ there is the equivalent using the UNMATCHED features, to compare and see whether there was any improvement

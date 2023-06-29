@@ -38,13 +38,13 @@ dnarep_mark_simulate = ifelse(interactive(),
                 no = args[3])
 
 mutfoldinc = ifelse(interactive(),
-                    yes = "0.01",
+                    yes = "20",
                     no = args[4]) %>% 
   as.numeric
 
 # load offset from 3rd process
 offset = ifelse(interactive(),
-                yes = Sys.glob("offset.tsv")[1],
+                yes = Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/offset.tsv")[1],
                 no = args[5]) %>% 
   read_tsv
 
@@ -63,35 +63,34 @@ if(length(chromatin_features) == 1){
 }
 
 ## load ready_for_regression (ALL sep chromosomes) (ACTUALLY BASELINE SAMPLE) from previous process, and bind them
-baseline_sample = ifelse(interactive(),
-                yes = lapply(list(c(# Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/baseline_sample_chr1_mutfoldinc0.01_OGG1_GOx30_chipseq.tsv")[1],
-                                    # Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/baseline_sample_chr2_mutfoldinc0.01_OGG1_GOx30_chipseq.tsv")[1],
-                                    # Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/baseline_sample_chr3_mutfoldinc0.01_OGG1_GOx30_chipseq.tsv")[1],
-                                    # Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/baseline_sample_chr4_mutfoldinc0.01_OGG1_GOx30_chipseq.tsv")[1],
-                                    # Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/baseline_sample_chr5_mutfoldinc0.01_OGG1_GOx30_chipseq.tsv")[1],
-                                    # Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/baseline_sample_chr6_mutfoldinc0.01_OGG1_GOx30_chipseq.tsv")[1],
-                                    # Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/baseline_sample_chr7_mutfoldinc0.01_OGG1_GOx30_chipseq.tsv")[1],
-                                    # Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/baseline_sample_chr8_mutfoldinc0.01_OGG1_GOx30_chipseq.tsv")[1],
-                                    # Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/baseline_sample_chr9_mutfoldinc0.01_OGG1_GOx30_chipseq.tsv")[1],
-                                    # Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/baseline_sample_chr10_mutfoldinc0.01_OGG1_GOx30_chipseq.tsv")[1],
-                                    # Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/baseline_sample_chr11_mutfoldinc0.01_OGG1_GOx30_chipseq.tsv")[1],
-                                    # Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/baseline_sample_chr12_mutfoldinc0.01_OGG1_GOx30_chipseq.tsv")[1],
-                                    # Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/baseline_sample_chr13_mutfoldinc0.01_OGG1_GOx30_chipseq.tsv")[1],
-                                    # Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/baseline_sample_chr14_mutfoldinc0.01_OGG1_GOx30_chipseq.tsv")[1],
-                                    # Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/baseline_sample_chr15_mutfoldinc0.01_OGG1_GOx30_chipseq.tsv")[1],
-                                    # Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/baseline_sample_chr16_mutfoldinc0.01_OGG1_GOx30_chipseq.tsv")[1],
-                                    # Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/baseline_sample_chr17_mutfoldinc0.01_OGG1_GOx30_chipseq.tsv")[1],
-                                    # Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/baseline_sample_chr18_mutfoldinc0.01_OGG1_GOx30_chipseq.tsv")[1],
-                                    # Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/baseline_sample_chr19_mutfoldinc0.01_OGG1_GOx30_chipseq.tsv")[1],
-                                    # Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/baseline_sample_chr20_mutfoldinc0.01_OGG1_GOx30_chipseq.tsv")[1],
-                                    Sys.glob("baseline_sample_chr21_mutfoldinc0.01_RepliSeq.tsv")[1] #,
-                                    # Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/baseline_sample_chr22_mutfoldinc0.01_OGG1_GOx30_chipseq.tsv")[1],
-                                    # Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/baseline_sample_chrX_mutfoldinc0.01_OGG1_GOx30_chipseq.tsv")[1]
-                                    )),
-                read_tsv),
-                no = lapply(list(args[-(1:5)][str_detect(args[-(1:5)], 
-                                                         paste0("_mutfoldinc", mutfoldinc, "_", dnarep_mark_simulate, ".tsv"))]), 
-                            read_tsv)) %>%
+baseline_sample = {if(interactive()) lapply(list(c(# Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/baseline_sample_chr1_mutfoldinc0.01_OGG1_GOx30_chipseq.tsv")[1],
+                                                    # Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/baseline_sample_chr2_mutfoldinc0.01_OGG1_GOx30_chipseq.tsv")[1],
+                                                    # Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/baseline_sample_chr3_mutfoldinc0.01_OGG1_GOx30_chipseq.tsv")[1],
+                                                    # Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/baseline_sample_chr4_mutfoldinc0.01_OGG1_GOx30_chipseq.tsv")[1],
+                                                    # Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/baseline_sample_chr5_mutfoldinc0.01_OGG1_GOx30_chipseq.tsv")[1],
+                                                    # Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/baseline_sample_chr6_mutfoldinc0.01_OGG1_GOx30_chipseq.tsv")[1],
+                                                    # Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/baseline_sample_chr7_mutfoldinc0.01_OGG1_GOx30_chipseq.tsv")[1],
+                                                    # Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/baseline_sample_chr8_mutfoldinc0.01_OGG1_GOx30_chipseq.tsv")[1],
+                                                    # Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/baseline_sample_chr9_mutfoldinc0.01_OGG1_GOx30_chipseq.tsv")[1],
+                                                    # Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/baseline_sample_chr10_mutfoldinc0.01_OGG1_GOx30_chipseq.tsv")[1],
+                                                    # Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/baseline_sample_chr11_mutfoldinc0.01_OGG1_GOx30_chipseq.tsv")[1],
+                                                    # Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/baseline_sample_chr12_mutfoldinc0.01_OGG1_GOx30_chipseq.tsv")[1],
+                                                    # Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/baseline_sample_chr13_mutfoldinc0.01_OGG1_GOx30_chipseq.tsv")[1],
+                                                    # Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/baseline_sample_chr14_mutfoldinc0.01_OGG1_GOx30_chipseq.tsv")[1],
+                                                    # Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/baseline_sample_chr15_mutfoldinc0.01_OGG1_GOx30_chipseq.tsv")[1],
+                                                    # Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/baseline_sample_chr16_mutfoldinc0.01_OGG1_GOx30_chipseq.tsv")[1],
+                                                    # Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/baseline_sample_chr17_mutfoldinc0.01_OGG1_GOx30_chipseq.tsv")[1],
+                                                    # Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/baseline_sample_chr18_mutfoldinc0.01_OGG1_GOx30_chipseq.tsv")[1],
+                                                    # Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/baseline_sample_chr19_mutfoldinc0.01_OGG1_GOx30_chipseq.tsv")[1],
+                                                    # Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/baseline_sample_chr20_mutfoldinc0.01_OGG1_GOx30_chipseq.tsv")[1],
+                                                    Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/baseline_sample_chr21_mutfoldinc20_RepliSeq.tsv")[1],
+                                                    Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/baseline_sample_chr22_mutfoldinc20_RepliSeq.tsv")[1]#,
+                                                    # Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/baseline_sample_chrX_mutfoldinc0.01_OGG1_GOx30_chipseq.tsv")[1]
+                                                    ))[[1]],
+                                            read_tsv)
+                else lapply(list(args[-(1:5)][str_detect(args[-(1:5)],
+                                                         paste0("_mutfoldinc", mutfoldinc, "_", dnarep_mark_simulate, ".tsv"))])[[1]], 
+                            read_tsv)} %>%
   Reduce(function(x, y) bind_rows(x, y), .) %>% 
   ### ensure that we keep only mutfold and simulated feature specified in this nf channel
   filter(`mutfoldinc`==mutfoldinc & `simulated_mark`==dnarep_mark_simulate) %>% 

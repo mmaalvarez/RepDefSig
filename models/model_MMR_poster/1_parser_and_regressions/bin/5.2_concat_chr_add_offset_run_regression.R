@@ -20,17 +20,17 @@ conflict_prefer("expand", "tidyr")
 args = commandArgs(trailingOnly=TRUE)
 
 sample = ifelse(interactive(),
-                yes = "6faf3507-bacc-5782-b834-f48c89fc10c7", #"MSM0.103", #"MSM0.124",
+                yes = "AY9808_REP1", #"MSM0.103", #"MSM0.124",
                 no = gsub("\\[|\\]", "", args[1])) # after channeling in nextflow, the sample names are contained within brackets, so remove them
 
 metadata = ifelse(interactive(),
-                  yes = "/g/strcombio/fsupek_cancer3/malvarez/WGS_tumors/somatic_variation/cell_lines/kucab_2019/processed/sample_treatments.tsv,/g/strcombio/fsupek_cancer3/malvarez/WGS_tumors/somatic_variation/cell_lines/zou_2021/processed/sample_gene_ko.tsv,/g/strcombio/fsupek_cancer3/malvarez/WGS_tumors/somatic_variation/TCGA_PCAWG_Hartwig_CPTAC_POG_MMRFCOMMPASS/metadata/metadatacomb_metadata_final_6datasets__noconsent_44plus11_samples_removed.csv",
+                  yes = "/g/strcombio/fsupek_cancer3/malvarez/WGS_tumors/somatic_variation/cell_lines/marcel_K562/metadata/WGS_clones_info.tsv,/g/strcombio/fsupek_cancer3/malvarez/WGS_tumors/somatic_variation/cell_lines/kucab_2019/processed/sample_treatments.tsv,/g/strcombio/fsupek_cancer3/malvarez/WGS_tumors/somatic_variation/cell_lines/zou_2021/processed/sample_gene_ko.tsv,/g/strcombio/fsupek_cancer3/malvarez/WGS_tumors/somatic_variation/TCGA_PCAWG_Hartwig_CPTAC_POG_MMRFCOMMPASS/metadata/metadatacomb_metadata_final_6datasets__noconsent_44plus11_samples_removed.csv",
                   no = args[2]) %>%
   strsplit(., split=",", fixed = T) %>% 
   magrittr::extract2(1) %>% 
   # only sample_id and info* columns are selected
   map_df(~read_tsv(.x) %>% 
-           select(sample_id, starts_with("info")))
+           select(`sample_id`, starts_with("info")))
 
 dnarep_marks = ifelse(interactive(),
                       yes = "../input_lists/dnarep_marks.csv",
@@ -44,7 +44,7 @@ chromatin_features = ifelse(interactive(),
 
 # load offset from 3rd process
 offset = ifelse(interactive(),
-                yes = Sys.glob("offset.tsv")[1],
+                yes = Sys.glob("../work/[[:alnum:]][[:alnum:]]/*/offset.tsv")[1],
                 no = args[5]) %>% 
   read_tsv
 # rename the chromatin environment column (if there is any, typically 'RepliSeq') to match the "mb_domain" name given to the general mutation table
@@ -81,8 +81,8 @@ merged = ifelse(interactive(),
                                     # Sys.glob(paste0("../work/[[:alnum:]][[:alnum:]]/*/ready_for_regression_", sample, "_chr18.tsv"))[1],
                                     # Sys.glob(paste0("../work/[[:alnum:]][[:alnum:]]/*/ready_for_regression_", sample, "_chr19.tsv"))[1],
                                     # Sys.glob(paste0("../work/[[:alnum:]][[:alnum:]]/*/ready_for_regression_", sample, "_chr20.tsv"))[1],
-                                    Sys.glob(paste0("ready_for_regression_", sample, "_chr21.tsv"))[1] #,
-                                    # Sys.glob(paste0("../work/[[:alnum:]][[:alnum:]]/*/ready_for_regression_", sample, "_chr22.tsv"))[1],
+                                    Sys.glob(paste0("../work/[[:alnum:]][[:alnum:]]/*/ready_for_regression_", sample, "_chr21.tsv"))[1],
+                                    Sys.glob(paste0("../work/[[:alnum:]][[:alnum:]]/*/ready_for_regression_", sample, "_chr22.tsv"))[1]#,
                                     # Sys.glob(paste0("../work/[[:alnum:]][[:alnum:]]/*/ready_for_regression_", sample, "_chrX.tsv"))[1]
                                     )),
                              read_tsv),

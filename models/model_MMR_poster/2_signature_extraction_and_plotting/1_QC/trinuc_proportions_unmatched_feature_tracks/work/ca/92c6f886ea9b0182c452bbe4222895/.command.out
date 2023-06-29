@@ -1,0 +1,9 @@
+MODE: NOT removing bp from both sides of range gaps
+MODE: NOT removing bp from both sides of range gaps
+WARNING: There are no chromatin features (e.g. RepliSeq); continuing just with dnarep_marks...
+            used   (Mb) gc trigger   (Mb)   max used    (Mb)
+Ncells   7796324  416.4   23622447 1261.6   23622447  1261.6
+Vcells 335030003 2556.1  791899396 6041.8 2131129433 16259.3
+            used   (Mb) gc trigger   (Mb)   max used    (Mb)
+Ncells   7797529  416.5   23622447 1261.6   23622447  1261.6
+Vcells 335032250 2556.1  791899396 6041.8 2131129433 16259.3

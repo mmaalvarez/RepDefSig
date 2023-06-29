@@ -1,0 +1,80 @@
+Failed to create bus connection: No such file or directory
+-- Attaching packages --------------------------------------- tidyverse 1.3.2 --
+v ggplot2 3.4.0      v purrr   0.3.5 
+v tibble  3.1.8      v dplyr   1.0.10
+v tidyr   1.2.1      v stringr 1.4.1 
+v readr   2.1.3      v forcats 0.5.2 
+-- Conflicts ------------------------------------------ tidyverse_conflicts() --
+x dplyr::filter() masks stats::filter()
+x dplyr::lag()    masks stats::lag()
+Warning message:
+In system("timedatectl", intern = TRUE) :
+  running command 'timedatectl' had status 1
+Loading required package: stats4
+Loading required package: BiocGenerics
+
+Attaching package: 'BiocGenerics'
+
+The following objects are masked from 'package:dplyr':
+
+    combine, intersect, setdiff, union
+
+The following objects are masked from 'package:stats':
+
+    IQR, mad, sd, var, xtabs
+
+The following objects are masked from 'package:base':
+
+    Filter, Find, Map, Position, Reduce, anyDuplicated, append,
+    as.data.frame, basename, cbind, colnames, dirname, do.call,
+    duplicated, eval, evalq, get, grep, grepl, intersect, is.unsorted,
+    lapply, mapply, match, mget, order, paste, pmax, pmax.int, pmin,
+    pmin.int, rank, rbind, rownames, sapply, setdiff, sort, table,
+    tapply, union, unique, unsplit, which.max, which.min
+
+Loading required package: S4Vectors
+
+Attaching package: 'S4Vectors'
+
+The following objects are masked from 'package:dplyr':
+
+    first, rename
+
+The following object is masked from 'package:tidyr':
+
+    expand
+
+The following objects are masked from 'package:base':
+
+    I, expand.grid, unname
+
+Loading required package: IRanges
+
+Attaching package: 'IRanges'
+
+The following objects are masked from 'package:dplyr':
+
+    collapse, desc, slice
+
+The following object is masked from 'package:purrr':
+
+    reduce
+
+Loading required package: GenomeInfoDb
+[conflicted] Will prefer dplyr::filter over any other package
+[conflicted] Will prefer dplyr::rename over any other package
+[conflicted] Will prefer dplyr::select over any other package
+[conflicted] Will prefer purrr::map over any other package
+[conflicted] Will prefer magrittr::extract over any other package
+[conflicted] Will prefer IRanges::reduce over any other package
+Rows: 1451762 Columns: 6
+-- Column specification --------------------------------------------------------
+Delimiter: "\t"
+chr (3): seqnames, strand, H3K36me3
+dbl (3): start, end, width
+
+i Use `spec()` to retrieve the full column specification for this data.
+i Specify the column types or set `show_col_types = FALSE` to quiet this message.
+Warning message:
+In seqinfo(ranges) :
+  /g/strcombio/fsupek_cancer3/malvarez/chromatin_info/histone_methylation_and_DHS/roadmap/fran_legacy_parsed/inputBeds_pooled8_merged_2bins/H3K36me3_pooled8_merged_2bins.bed is not a big wig file

@@ -77,7 +77,6 @@ map_features_binarized_temp = map_features %>%
                    "low",
                    "high")}) %>% 
   as_tibble %>% 
-  relocate(all_of(features_with_character_levels), .after = last_col()) %>% 
   unite("metadata", !matches("seqnames|start|end|width|strand")) %>% 
   makeGRangesFromDataFrame(keep.extra.columns = T)
 rm(map_features) ; gc()

@@ -22,34 +22,34 @@ args = commandArgs(trailingOnly=TRUE)
 
 map_features_binarized = ifelse(interactive(),
                                 yes = lapply(list(c(
-                                  #Sys.glob(paste0("../work/[[:alnum:]][[:alnum:]]/*/map_features_binarized_chr1.tsv"))[1],
-                                  #Sys.glob(paste0("../work/[[:alnum:]][[:alnum:]]/*/map_features_binarized_chr2.tsv"))[1],
-                                  #Sys.glob(paste0("../work/[[:alnum:]][[:alnum:]]/*/map_features_binarized_chr3.tsv"))[1],
-                                  #Sys.glob(paste0("../work/[[:alnum:]][[:alnum:]]/*/map_features_binarized_chr4.tsv"))[1],
-                                  #Sys.glob(paste0("../work/[[:alnum:]][[:alnum:]]/*/map_features_binarized_chr5.tsv"))[1],
-                                  #Sys.glob(paste0("../work/[[:alnum:]][[:alnum:]]/*/map_features_binarized_chr6.tsv"))[1],
-                                  #Sys.glob(paste0("../work/[[:alnum:]][[:alnum:]]/*/map_features_binarized_chr7.tsv"))[1],
-                                  #Sys.glob(paste0("../work/[[:alnum:]][[:alnum:]]/*/map_features_binarized_chr8.tsv"))[1],
-                                  #Sys.glob(paste0("../work/[[:alnum:]][[:alnum:]]/*/map_features_binarized_chr9.tsv"))[1],
-                                  #Sys.glob(paste0("../work/[[:alnum:]][[:alnum:]]/*/map_features_binarized_chr10.tsv"))[1],
-                                  #Sys.glob(paste0("../work/[[:alnum:]][[:alnum:]]/*/map_features_binarized_chr11.tsv"))[1],
-                                  #Sys.glob(paste0("../work/[[:alnum:]][[:alnum:]]/*/map_features_binarized_chr12.tsv"))[1],
-                                  #Sys.glob(paste0("../work/[[:alnum:]][[:alnum:]]/*/map_features_binarized_chr13.tsv"))[1],
-                                  #Sys.glob(paste0("../work/[[:alnum:]][[:alnum:]]/*/map_features_binarized_chr14.tsv"))[1],
-                                  #Sys.glob(paste0("../work/[[:alnum:]][[:alnum:]]/*/map_features_binarized_chr15.tsv"))[1],
-                                  #Sys.glob(paste0("../work/[[:alnum:]][[:alnum:]]/*/map_features_binarized_chr16.tsv"))[1],
-                                  #Sys.glob(paste0("../work/[[:alnum:]][[:alnum:]]/*/map_features_binarized_chr17.tsv"))[1],
-                                  #Sys.glob(paste0("../work/[[:alnum:]][[:alnum:]]/*/map_features_binarized_chr18.tsv"))[1],
-                                  #Sys.glob(paste0("../work/[[:alnum:]][[:alnum:]]/*/map_features_binarized_chr19.tsv"))[1],
-                                  #Sys.glob(paste0("../work/[[:alnum:]][[:alnum:]]/*/map_features_binarized_chr20.tsv"))[1],
-                                  Sys.glob(paste0("map_features_binarized_chr21.tsv"))[1],
-                                  Sys.glob(paste0("map_features_binarized_chr22.tsv"))[1])),
-                                  #Sys.glob(paste0("../work/[[:alnum:]][[:alnum:]]/*/map_features_binarized_chrX.tsv"))[1])),
+                                  Sys.glob(paste0("../work/[[:alnum:]][[:alnum:]]/*/map_features_binarized_chr1.tsv"))[1],
+                                  Sys.glob(paste0("../work/[[:alnum:]][[:alnum:]]/*/map_features_binarized_chr2.tsv"))[1],
+                                  Sys.glob(paste0("../work/[[:alnum:]][[:alnum:]]/*/map_features_binarized_chr3.tsv"))[1],
+                                  Sys.glob(paste0("../work/[[:alnum:]][[:alnum:]]/*/map_features_binarized_chr4.tsv"))[1],
+                                  Sys.glob(paste0("../work/[[:alnum:]][[:alnum:]]/*/map_features_binarized_chr5.tsv"))[1],
+                                  Sys.glob(paste0("../work/[[:alnum:]][[:alnum:]]/*/map_features_binarized_chr6.tsv"))[1],
+                                  Sys.glob(paste0("../work/[[:alnum:]][[:alnum:]]/*/map_features_binarized_chr7.tsv"))[1],
+                                  Sys.glob(paste0("../work/[[:alnum:]][[:alnum:]]/*/map_features_binarized_chr8.tsv"))[1],
+                                  Sys.glob(paste0("../work/[[:alnum:]][[:alnum:]]/*/map_features_binarized_chr9.tsv"))[1],
+                                  Sys.glob(paste0("../work/[[:alnum:]][[:alnum:]]/*/map_features_binarized_chr10.tsv"))[1],
+                                  Sys.glob(paste0("../work/[[:alnum:]][[:alnum:]]/*/map_features_binarized_chr11.tsv"))[1],
+                                  Sys.glob(paste0("../work/[[:alnum:]][[:alnum:]]/*/map_features_binarized_chr12.tsv"))[1],
+                                  Sys.glob(paste0("../work/[[:alnum:]][[:alnum:]]/*/map_features_binarized_chr13.tsv"))[1],
+                                  Sys.glob(paste0("../work/[[:alnum:]][[:alnum:]]/*/map_features_binarized_chr14.tsv"))[1],
+                                  Sys.glob(paste0("../work/[[:alnum:]][[:alnum:]]/*/map_features_binarized_chr15.tsv"))[1],
+                                  Sys.glob(paste0("../work/[[:alnum:]][[:alnum:]]/*/map_features_binarized_chr16.tsv"))[1],
+                                  Sys.glob(paste0("../work/[[:alnum:]][[:alnum:]]/*/map_features_binarized_chr17.tsv"))[1],
+                                  Sys.glob(paste0("../work/[[:alnum:]][[:alnum:]]/*/map_features_binarized_chr18.tsv"))[1],
+                                  Sys.glob(paste0("../work/[[:alnum:]][[:alnum:]]/*/map_features_binarized_chr19.tsv"))[1],
+                                  Sys.glob(paste0("../work/[[:alnum:]][[:alnum:]]/*/map_features_binarized_chr20.tsv"))[1],
+                                  Sys.glob(paste0("../work/[[:alnum:]][[:alnum:]]/*/map_features_binarized_chr21.tsv"))[1],
+                                  Sys.glob(paste0("../work/[[:alnum:]][[:alnum:]]/*/map_features_binarized_chr22.tsv"))[1],
+                                  Sys.glob(paste0("../work/[[:alnum:]][[:alnum:]]/*/map_features_binarized_chrX.tsv"))[1])),
                                   read_tsv),
                                 no = lapply(list(args), read_tsv)) %>%
   Reduce(function(x, y) bind_rows(x, y), .) 
-
 gc()
+
 
 
 ### calculate offset (log(n trinuc of each of the 32 types (e.g. ACT) that exist in each RT-dnarepmarks combination, and could therefore be any A(C>D)T SNV))
@@ -144,6 +144,7 @@ offset = merge(offset_temp, empty_offset, all = T) %>%
   relocate(trinuc32, .before = tri)
 
 write_tsv(offset, "offset.tsv")
+#offset = read_tsv("../../2_signature_extraction_and_plotting/1_QC/offset.tsv")
 
 
 ###############################################
@@ -162,6 +163,21 @@ trinuc_dist_QC = offset %>%
   summarise(freq_trinuc32 = sum(freq_trinuc32)) %>%
   group_by(feature, levels) %>%
   mutate(prop_trinuc32 = freq_trinuc32 / sum(freq_trinuc32)) %>% 
+  group_by(trinuc32, feature) %>%
+  mutate(diff_prop_trinuc32 = abs(diff(prop_trinuc32)),
+         diff_prop_trinuc32 = ifelse(diff_prop_trinuc32 * 10 >= 1,
+                                     "!",
+                                     ifelse(diff_prop_trinuc32 * 100 >= 1,
+                                            "***",
+                                            ifelse(diff_prop_trinuc32 * 1000 >= 1,
+                                                   "**",
+                                                   ifelse(diff_prop_trinuc32 * 10000 >= 1,
+                                                          "*",
+                                                          "")))),
+         # keep the asterisks only in the lowest prop value of the 2 levels for each pair, to show in the plot cleanlier
+         diff_prop_trinuc32 = ifelse(prop_trinuc32 == min(prop_trinuc32),
+                                     diff_prop_trinuc32,
+                                     "")) %>% 
   ungroup() %>%
   # central base is bold
   mutate(trinuc32 = gsub("C", "𝗖", trinuc32),
@@ -170,28 +186,40 @@ trinuc_dist_QC = offset %>%
          trinuc32 = gsub("T", "𝗧", trinuc32),
          trinuc32 = gsub("^𝗧", "T", trinuc32),
          trinuc32 = gsub("𝗧$", "T", trinuc32),
-         trinuc32 = factor(trinuc32, levels = trinuc32_sorted)) %>% 
-  arrange(trinuc32, feature, levels)
+         trinuc32 = factor(trinuc32, levels = trinuc32_sorted)) %>%
+  mutate(levels = ifelse(levels %in% c("low", "0", "0-3", "0&1", "bgGenome"),
+                         "low",
+                         ifelse(levels %in% c("high", "1-3", "4-6", "2&3", "exon__non_CEG_TSG_OG"),
+                                "high",
+                                "OTHER LEVEL"))) %>%
+  arrange(trinuc32, feature)
 
 trinuc_dist_QC_plot = ggplot(trinuc_dist_QC,
                              aes(x = trinuc32,
                                  y = prop_trinuc32,
                                  fill = levels)) +
-  scale_y_continuous(breaks = c(seq(0, 0.02, 0.01), 1/32, seq(0.04, max(trinuc_dist_QC$prop_trinuc32), 0.01))) +
+  scale_y_continuous(breaks = round(c(seq(0, 0.02, 0.01), 1/32, seq(0.04, max(trinuc_dist_QC$prop_trinuc32), 0.01)),2)) +
   geom_col(width = 0.6,
            position = position_dodge(width = 0.5)) +
+  scale_fill_manual(values = c("red", "blue")) +
+  geom_text(aes(label = diff_prop_trinuc32),
+            position = position_dodge(width = 0.75),
+            hjust = -0.5, vjust = 0.8, size = 3, angle = 90) +
   geom_hline(yintercept = 1/32, linetype = "dashed") +
   facet_wrap(facets = ~feature,
              scales = "free") +
   xlab("32 trinucleotide types (collapsed from 64)") +
   ylab("Fraction of the 32 trinucleotide types") +
   theme_classic() +
-  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 0))
+  theme(axis.text.x = element_text(size = 6, angle = 90, vjust = 0.5, hjust = 0),
+        legend.position = c(0.85, 0),
+        legend.justification = c(1, 0))
 
 ggsave("trinuc_dist_QC.jpg",
+       #"../../2_signature_extraction_and_plotting/1_QC/trinuc_dist_QC.jpg",
        plot = trinuc_dist_QC_plot,
        device = "jpg",
        width = 10,
        height = 5.6,
-       dpi = 600,
-       bg = "white")
+       dpi = 600)
+

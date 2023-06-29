@@ -1,0 +1,3 @@
+"orig_paths.csv" are symlinked in symlinks/
+
+somehow, even with runOptions = '-B /' in config file, the container can not access fsupek_cancer3, not either with symlinks
