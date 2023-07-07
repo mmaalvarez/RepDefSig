@@ -1,0 +1,5 @@
+'trinuc_dist_QC.jpg' is created in bin/4_offset.R, it's the trinuc proportions of feature files after matching and merging them into the offset
+
+in trinuc_proportions_unmatched_feature_tracks/res/ there is the equivalent using the UNMATCHED features, to compare and see whether there was any improvement
+
+the 2_..preoverlap/ is the improvement after matching but before overlapping features, which might be a (partial) cause of lose of trinuc proportions improvement in 3_..overlapped with respect to 1_..unmatched/

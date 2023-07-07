@@ -147,8 +147,9 @@ samples_dMMR_status = bind_rows(K562, iPSC, tumors) %>%
 
 ## results regressions
 
-results_regressions = lapply(c("../../1_parser_and_regressions/res/results_real_samples.tsv",
-                               "../../1_parser_and_regressions/res/simulated_positive_controls.tsv"),
+results_regressions = lapply(c("../../../../../resources/OLD/OLD_MMR_poster/res/results_real_samples.tsv", #"../../1_parser_and_regressions/res/results_real_samples.tsv",
+                               "../../../../../resources/OLD/OLD_MMR_poster/res/simulated_positive_controls.tsv" #"../../1_parser_and_regressions/res/simulated_positive_controls.tsv"
+                               ),
                              read_tsv) %>%
   Reduce(function(x, y) bind_rows(x, y), .) %>% 
   rename_with(~str_replace(., 'high$', '')) %>% 
@@ -163,7 +164,10 @@ results_regressions = lapply(c("../../1_parser_and_regressions/res/results_real_
   #                           sample_id)) %>% 
   select(-c(info1,info2)) %>% 
   drop_na(starts_with("estimate_")) %>% 
-  select(sample_id, contains("estimate_"), contains("conf"))
+  select(sample_id, contains("estimate_"), contains("conf")) %>% 
+  ## at samples with any estimate(s) >~|12|, convert their -culprit- estimates and CIs to 0 for the NMF, as these would mean that the regression died
+  mutate(across(starts_with("estimate") | starts_with("conf."),
+                ~ifelse(abs(.x) >= 12, 0, .)))
 
 coefficient_table = results_regressions %>%
   rename_all(~str_replace_all(., 'estimate_', 'estimate ')) %>% 

@@ -1,8 +1,15 @@
+UPD 2: tumors mut burdens are downsampled to tops 20SNVs/Mbp
+
+
 UPDATE: added MMRwt samples
 
 	Zou: 8 controls + the low burden MSK0.123_s1
 
-	tumors: 162 MSS samples (random, keeping source and tissue proportions in 162 MSI samples)
+	tumors: 162 MSS samples
+
+			keeping source and tissue proportions in 162 MSI samples
+
+			then prioritize the purple's msStatus and msIndelsPerMb ("MSS" that have the lowest msIndelsPerMb) rather than random
 
 
 

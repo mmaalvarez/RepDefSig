@@ -131,7 +131,7 @@ process binarize_scores {
 
 process offset {
 
-    publishDir "$PWD/../2_signature_extraction_and_plotting/1_QC/", mode: 'copy'
+    publishDir "$PWD/../2_signature_extraction_and_plotting/1_QC/trinuc_proportions_matched_feature_tracks/", mode: 'copy'
 
     time = 1.hour
     memory = { (params.memory_process4 + 5*(task.attempt-1)).GB }

@@ -41,10 +41,8 @@ names_conversion_table = bind_rows(PCAWG_names_conversion_table, TCGA_names_conv
 
 
 metadata_K562_MMRko_pairs = read_tsv("/g/strcombio/fsupek_cancer3/malvarez/WGS_tumors/somatic_variation/cell_lines/marcel_K562/metadata/WGS_clones_info.tsv")
-K562_MMRko_pairs = metadata_K562_MMRko_pairs %>% 
-  select(`barcode sample`) %>% 
-  `colnames<-`("sample_id")
-write_tsv(K562_MMRko_pairs, "Marcel_K562_24_MMRko_pairs.tsv", col_names = F)
+K562_MMRko_pairs = metadata_K562_MMRko_pairs
+write_tsv(K562_MMRko_pairs, "Marcel_K562_24_MMRko_pairs.tsv")
 
 
 
@@ -56,27 +54,22 @@ zou_MMRwt = read_tsv("Zou_iPSC_MMRwt.tsv", col_names = F) %>%
 
 
 
-metadata_tumors = read_tsv("/g/strcombio/fsupek_cancer3/malvarez/WGS_tumors/somatic_variation/TCGA_PCAWG_Hartwig_CPTAC_POG_MMRFCOMMPASS/metadata/metadatacomb_metadata_final_6datasets__noconsent_44plus11_samples_removed.csv")
+metadata_tumors = read_tsv("/g/strcombio/fsupek_cancer3/malvarez/WGS_tumors/somatic_variation/TCGA_PCAWG_Hartwig_CPTAC_POG_MMRFCOMMPASS/metadata/comb_metadata_final_6datasets__noconsent_samples_removed__hartwig_upd.tsv")
 
 tumors_MSI = metadata_tumors %>% 
-  filter(MSI_status %in% c("HYPER", "MSI"))
+  filter((MSI_status %in% c("HYPER", "MSI") & (is.na(msStatus) | msStatus != "MSS")) |
+         (msStatus == "MSI" & (is.na(MSI_status) | !MSI_status %in% c("MSS", "ERROR", "ERCC2mut"))))
 
 tumors_MSS = metadata_tumors %>% 
   ## keep things as similar as possible to the MSI samples (except the MSI status)
-  filter(source %in% c("HMF", "TCGA", "PCAWG")) %>% 
-  filter(tissue %in% unique(tumors_MSI$tissue)) %>% 
-  # (before we were missing 1 HMF ovary, so specify that)
-  filter(OriginalType %in% unique(tumors_MSI$OriginalType) | str_detect(OriginalType, "Ovary")) %>% 
-  filter(hr_status %in% unique(tumors_MSI$hr_status)) %>%
-  filter(smoking_history %in% unique(tumors_MSI$smoking_history)) %>%
-  filter(treatment_platinum %in% unique(tumors_MSI$treatment_platinum)) %>%
-  filter(treatment_5FU %in% unique(tumors_MSI$treatment_5FU)) %>%
-  filter(gender %in% unique(tumors_MSI$gender)) %>% 
+  filter(source %in% unique(tumors_MSI$source)) %>% # it's "HMF", "TCGA", and "PCAWG" 
+  filter(tissue %in% unique(tumors_MSI$tissue)) %>%
   ## specify only MSS (or NA in the case of TCGA, as it does not say MSS explicitly, it just says MSI or NA)
-  filter(!MSI_status %in% c("HYPER", "MSI", "ERROR", "ERCC2mut")) %>% 
-  filter(!is.na(MSI_status) | source == "TCGA")
+  filter((!MSI_status %in% c("HYPER", "MSI", "ERROR", "ERCC2mut") | is.na(MSI_status)) &
+         (msStatus != "MSI" | is.na(msStatus))) %>% 
+  filter(!(is.na(MSI_status) & is.na(msStatus)))
 
-## now randomly keep 162 MSS samples that keep tumors_MSI metadata proportions
+## now keep length(tumors_MSI$sample_id) MSS samples that keep tumors_MSI metadata proportions
 
 # proportions of source and tissue to keep in MSS samples
 tumors_MSI_metadata_proportions = tumors_MSI %>% 
@@ -86,10 +79,11 @@ tumors_MSI_metadata_proportions = tumors_MSI %>%
   filter(Freq > 0) %>% 
   arrange(desc(Freq), source, tissue)
 
-# function to apply sample_n for each group
+# function to slice top n=='freq' samples with lowest msIndelsPerMp (i.e. least MSI) for each source-tissue group
 sample_group <- function(group_df, freq) {
   group_df %>% 
-    sample_n(min(freq, n()))
+    arrange(msIndelsPerMb) %>% 
+    slice_head(n = freq)
 }
 
 # apply
@@ -113,9 +107,12 @@ write_tsv(bind_rows(tumors_MSI, tumors_MSS), "tumors_MSI_MSS_metadata.tsv")
 
 
 ### bind all and write out
-write_csv(bind_rows(K562_MMRko_pairs,
+write_csv(bind_rows(select(K562_MMRko_pairs, sample_id),
                     zou_MMRko,
                     zou_MMRwt,
-                    select(tumors_MSI, sample_id),
-                    select(tumors_MSS, sample_id)), 
+                    ## tumors have been downsampled, so they have the '.downsampled_SNVs' suffix now
+                    select(tumors_MSI, sample_id) %>% 
+                      mutate(sample_id = gsub("$", ".downsampled_SNVs", sample_id)),
+                    select(tumors_MSS, sample_id) %>% 
+                      mutate(sample_id = gsub("$", ".downsampled_SNVs", sample_id))), 
           "sample_ids.csv", col_names = F)
